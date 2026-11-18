@@ -34,10 +34,13 @@ import { requirePagePermission } from "@/server/auth";
 import { getQuickBooksForHandoffs } from "@/server/data/accounting";
 import { BILLING_VIEWS, getBillingBoard, type BillingFilters, type BillingView } from "@/server/data/billing";
 import { invoicesByHandoff, invoicingSettings } from "@/server/data/invoices";
+import { InvoicingChoice } from "@/components/billing/invoicing-choice";
+import { hrefShown } from "@/lib/modules";
+import { getModulesOff } from "@/server/modules";
 import { createInvoice } from "./invoices/actions";
 import { getSay } from "@/server/industry";
 
-export const metadata = { title: "Billing Readiness" };
+export const metadata = { title: "Billing" };
 
 type Search = { view?: string; q?: string; from?: string; to?: string; customer?: string; kind?: string; readiness?: string; batch?: string; error?: string };
 
@@ -64,7 +67,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   };
   const canManage = can(access, "billing.manage");
   const canEnterTickets = can(access, "tickets.edit");
-  const [board, invoicing] = await Promise.all([getBillingBoard(view, filters), invoicingSettings()]);
+  const [board, invoicing, off] = await Promise.all([getBillingBoard(view, filters), invoicingSettings(), getModulesOff()]);
+  // Order to Cash (O2C1, owner 2026-11-17): the read-only overview of every order, linked from this work list.
+  const o2c = hrefShown("/order-to-cash", off);
   const keep = (k: BillingView) => {
     const p = new URLSearchParams({ view: k });
     for (const f of ["q", "from", "to", "customer"] as const) if (filters[f]) p.set(f, filters[f]!);
@@ -74,20 +79,29 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader
-        title="Billing Readiness"
-        description={invoicing.issuer === "taviron"
-          ? "Which delivered work is documented, reviewed and ready to invoice. Handed-off orders become invoices Taviron issues (Settings → Invoicing). Nothing here changes prices."
-          : "Which delivered work is documented, reviewed and ready to invoice. Handed-off orders go to your accounting system by file or, once connected, by Send to QuickBooks. Nothing here changes prices or marks anything paid."}
+        title="Billing"
+        description={
+          <>
+            {!invoicing.chosen
+              ? "Your daily billing work: what is ready to bill, what still needs a ticket or a check, and what was handed off. Nothing here changes prices."
+              : invoicing.issuer === "taviron"
+                ? "Your daily billing work: what is ready to bill, what still needs a ticket or a check, and the invoices to make and send from Taviron. Nothing here changes prices."
+                : "Your daily billing work: what is ready to bill, what still needs a ticket or a check, and what to send to QuickBooks. Nothing here changes prices or marks anything paid."}
+            {o2c && <> <Link href="/order-to-cash" className="font-semibold text-brand-fg underline-offset-2 hover:underline">See all orders from delivery to payment</Link></>}
+          </>
+        }
         actions={
           <>
             <ButtonLink href="/billing/leaks" variant="secondary" size="sm">Revenue check</ButtonLink>
             {invoicing.installed && <ButtonLink href="/billing/invoices" variant="secondary" size="sm">Invoices</ButtonLink>}
             <ButtonLink href="/billing/payments" variant="secondary" size="sm">Payments by ticket</ButtonLink>
-            <ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>
+            {invoicing.chosen && <ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>}
           </>
         }
       />
       {sp.error && <div className="mb-4"><FormError message={sp.error.slice(0, 300)} /></div>}
+      {/* Until the company answers (INV1), the question instead of empty QuickBooks screens. */}
+      {invoicing.installed && !invoicing.chosen && <div className="mb-5"><InvoicingChoice canChoose={canManage} back="/billing" /></div>}
       <BillingPipeline counts={board.counts} href={keep} current={view} />
       <nav aria-label="Billing views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(BILLING_VIEWS) as BillingView[]).map((k) => (

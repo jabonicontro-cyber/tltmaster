@@ -213,14 +213,35 @@ export async function markInvoiceSent(formData: FormData) {
   go(page(id), "saved", data === false ? "already_sent" : "marked_sent");
 }
 
-export async function saveInvoicingSettings(formData: FormData) {
-  const back = "/settings?tab=invoicing";
+/** Where the invoicing question may send the person back to (the pages that show it). */
+const CHOICE_BACK = ["/settings?tab=invoicing", "/billing", "/billing/invoices", "/billing/setup", "/command-center"] as const;
+
+/**
+ * "Who sends your invoices: Taviron or QuickBooks?" (owner decision 2026-11-17, INV1; 20261120024710): the answer, from
+ * Getting started, Settings → Invoicing or a billing page that shows the question. billing.manage (the database checks).
+ */
+export async function chooseInvoiceIssuer(formData: FormData) {
+  const raw = String(formData.get("back") ?? "");
+  const back = (CHOICE_BACK as readonly string[]).includes(raw) ? raw : "/settings?tab=invoicing";
   await manage(back);
   const issuer = z.enum(["quickbooks", "taviron"]).safeParse(formData.get("issuer"));
+  if (!issuer.success) go(back, "error", "Choose who sends your invoices: Taviron or QuickBooks.");
+  const { error } = await (await createClient()).rpc("invoicing_choose_issuer", { p_issuer: issuer.data });
+  if (error) go(back, "error", dbErrorMessage(error));
+  revalidatePath("/settings");
+  revalidatePath("/command-center");
+  revalidatePath("/billing/setup");
+  refresh();
+  go(back, "saved", "invoicing");
+}
+
+/** Payment terms and the invoice footer (Settings → Invoicing, their own card and Save). */
+export async function saveInvoiceDetails(formData: FormData) {
+  const back = "/settings?tab=invoicing";
+  await manage(back);
   const terms = Number.parseInt(String(formData.get("terms_days") ?? ""), 10);
-  if (!issuer.success) go(back, "error", "Choose who issues your invoices.");
   if (!Number.isInteger(terms) || terms < 0 || terms > 120) go(back, "error", "Payment terms are 0 to 120 days.");
-  const { error } = await (await createClient()).rpc("invoicing_save_settings", { p_issuer: issuer.data, p_terms_days: terms, p_footer: String(formData.get("footer") ?? "").trim().slice(0, 500) });
+  const { error } = await (await createClient()).rpc("invoicing_save_details", { p_terms_days: terms, p_footer: String(formData.get("footer") ?? "").trim().slice(0, 500) });
   if (error) go(back, "error", dbErrorMessage(error));
   revalidatePath("/settings");
   refresh();

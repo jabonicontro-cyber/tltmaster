@@ -249,12 +249,16 @@ export async function reviseQuote(quoteId: string, reason: string): Promise<Acti
   });
 }
 
-export async function setQuoteStatus(quoteId: string, status: string, note: string): Promise<ActionResult> {
+export async function setQuoteStatus(quoteId: string, status: string, note: string, customerPo = ""): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("quotes.status");
     if (!uuid.safeParse(quoteId).success || !(QUOTE_STATUSES as readonly string[]).includes(status)) return fail("Invalid request.");
     const supabase = await createClient();
-    const { error } = await supabase.rpc("set_quote_status", { p_quote_id: quoteId, p_status: status, p_note: note.slice(0, 500) });
+    // Accepting with the customer's PO (BL1, 20261120024730): recorded on the accepted revision first, in one step.
+    const po = customerPo.trim().slice(0, 100);
+    const { error } = status === "accepted" && po
+      ? await supabase.rpc("quote_accept", { p_quote_id: quoteId, p_note: note.slice(0, 500), p_customer_po: po })
+      : await supabase.rpc("set_quote_status", { p_quote_id: quoteId, p_status: status, p_note: note.slice(0, 500) });
     if (error) return fail(dbErrorMessage(error));
     revalidateQuote(quoteId);
     if (status === "accepted") {

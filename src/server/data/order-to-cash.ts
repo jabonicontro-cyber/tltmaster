@@ -3,11 +3,14 @@ import type { OrderRow } from "@/lib/order-to-cash";
 import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { orderTotals } from "./sales-money";
+import { balanceCents, invoiceState, overdueNeverSent } from "@/lib/billing/invoices";
+import { invoicesByHandoff, invoicingSettings, listInvoices } from "./invoices";
+import { businessToday } from "./settings";
 
 // Order-to-Cash Control Center (B42 increment 1): every open order's position, read from billing_order_status (the
 // database's own readiness) plus confirmed orders still waiting for a date. Caller's company (RLS); read-only.
 
-const COLUMNS = "order_id, order_number, status, customer_name, project_name, scheduled_start, order_date, completed_at, total_cents, loads_total, loads_missing, loads_not_due, tickets_live, tickets_pending, exceptions_count, readiness, fulfilled, fulfillment_gap, handed_off_at, changed_since_handoff, batch_number";
+const COLUMNS = "order_id, order_number, status, customer_name, project_name, scheduled_start, order_date, completed_at, total_cents, loads_total, loads_missing, loads_not_due, tickets_live, tickets_pending, exceptions_count, readiness, fulfilled, fulfillment_gap, handed_off_at, changed_since_handoff, batch_number, handoff_order_id";
 const n = (v: unknown) => Number(v ?? 0);
 
 export async function orderToCashRows(): Promise<OrderRow[]> {
@@ -33,5 +36,25 @@ export async function orderToCashRows(): Promise<OrderRow[]> {
     tickets_live: 0, tickets_pending: 0, exceptions_count: 0, readiness: "in_progress", fulfilled: false, fulfillment_gap: "no_loads",
     handed_off_at: null, changed_since_handoff: false, batch_number: null,
   }));
+  // Invoiced and Paid (O2C1): each handed-off order's Taviron invoice, alone or combined, with what is still owed.
+  const handoffs = rows.map((r) => (r as unknown as { handoff_order_id: string | null }).handoff_order_id).filter((h): h is string => Boolean(h));
+  if (handoffs.length) {
+    const [settings, byHandoff, invoices, { today }] = await Promise.all([invoicingSettings(), invoicesByHandoff(handoffs), listInvoices().catch(() => null), businessToday()]);
+    if (settings.issuer === "taviron" || Object.keys(byHandoff).length) {
+      const full = new Map((invoices ?? []).map((i) => [i.id, i]));
+      for (const r of rows) {
+        const h = (r as unknown as { handoff_order_id: string | null }).handoff_order_id;
+        const link = h ? byHandoff[h] : undefined;
+        const i = link ? full.get(link.id) : undefined;
+        if (!link || !i) continue;
+        r.invoice = {
+          id: i.id, number: i.number, status: i.status,
+          paid: i.status === "issued" && balanceCents(i) === 0,
+          overdue: invoiceState(i, today) === "overdue",
+          neverSent: overdueNeverSent(i, today),
+        };
+      }
+    }
+  }
   return [...waiting, ...rows];
 }

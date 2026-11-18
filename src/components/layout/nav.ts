@@ -55,6 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/safety", label: "Safety", icon: ShieldAlert, permission: "safety.view", group: "Operations" },
   { href: "/accountant", label: "Accountant view", icon: Calculator, permission: "accounting.view", group: "Finance", accountant: true },
   { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view", group: "Finance", accountant: true },
+  // Billing is the office's daily work list; Order to Cash the read-only overview of every order (O2C1, owner 2026-11-17).
   { href: "/order-to-cash", label: "Order to Cash", icon: Workflow, permission: "billing.view", group: "Finance" },
   { href: "/payroll", label: "Payroll", icon: Wallet, permission: "payroll.manage", group: "Finance" },
   { href: "/reports", label: "Reports", icon: BarChart3, anyOf: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"], group: "Finance", accountant: true },

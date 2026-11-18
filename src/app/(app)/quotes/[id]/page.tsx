@@ -91,6 +91,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           order={order}
           emailed={deliveries.some((d) => d.channel !== "manual" && (d.status === "sent" || d.status === "failed"))}
           quotesOnly={quotesOnly}
+          poMissing={customer.po_required && !current.customer_po.trim() ? { instructions: customer.po_instructions ?? "" } : null}
         />
       </div>
 

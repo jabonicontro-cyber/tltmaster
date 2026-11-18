@@ -3,6 +3,7 @@ import { canSeeSalesTotals } from "@/lib/permissions";
 import { getAccess } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import type { AuditEventRow } from "./types";
+import { redactHistoryEntry } from "@/lib/orders/money-history";
 
 // Order and quote totals for money access only (owner decision 2026-11-17, master plan §12 SEC7; migration
 // 20261120024700). The tables give everyone the per-unit rates but not the totals or line amounts; these read them
@@ -108,24 +109,4 @@ export async function salesHistory(entityType: "order" | "quote", entityId: stri
   }
   if (await seesSalesTotals()) return rows;
   return rows.map(redactHistoryEntry);
-}
-
-const MONEY_ACTIONS = new Set(["order.created", "order.created_from_quote", "order.updated", "order.price_check_requested", "order.price_checked", "order.price_corrected", "quote.created", "quote.updated"]);
-
-/** The same redaction as the database's sales_history, for a role preview whose real account has money access. */
-export function redactHistoryEntry(e: AuditEventRow): AuditEventRow {
-  if (!MONEY_ACTIONS.has(e.action)) return e;
-  const summary = e.summary.replace(/[:,]\s*total\s+-?[0-9][0-9,]*\.[0-9]{2}/g, "");
-  let details = e.details;
-  if (details && typeof details === "object" && !Array.isArray(details)) {
-    const d = { ...details };
-    for (const k of ["total_cents", "subtotal_cents", "tax_cents", "total_from", "total_to"]) delete d[k];
-    if (d.changes && typeof d.changes === "object" && !Array.isArray(d.changes)) {
-      const c = { ...(d.changes as Record<string, unknown>) };
-      for (const k of ["total_cents", "subtotal_cents", "tax_cents", "discount_cents", "taxable_cents"]) delete c[k];
-      d.changes = c;
-    }
-    details = d;
-  }
-  return { ...e, summary, details };
 }

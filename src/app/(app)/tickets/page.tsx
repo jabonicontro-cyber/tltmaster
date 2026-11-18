@@ -18,6 +18,8 @@ import { can } from "@/lib/permissions";
 import { REVIEW_REASON_LABELS, reviewReasonLabel } from "@/lib/tickets/rules";
 import { withReturn } from "@/lib/safe-redirect";
 import { requirePagePermission } from "@/server/auth";
+import { MistakeReports } from "@/components/tickets/mistake-reports";
+import { listOpenMistakes } from "@/server/data/ticket-mistakes";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { CHECK_FILTERS, listLoadsAwaitingTickets, listTickets, photoCounts, resourceNames, ticketCounts, ticketViewFromParams, TICKET_VIEWS, type CheckFilter, type TicketView } from "@/server/data/tickets";
 import { getSay } from "@/server/industry";
@@ -44,7 +46,8 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
     // Driver names as the ticket form and the driver list show them (the ticket's saved name only as a fallback).
     resourceNames(),
   ]);
-  const photos = await photoCounts(tickets.map((t) => t.ticket_number));
+  // Drivers' "Mistake on my ticket" reports (TM1) wait in the same review: on "To check".
+  const [photos, mistakes] = await Promise.all([photoCounts(tickets.map((t) => t.ticket_number)), listOpenMistakes()]);
   // The section's name follows what the company hauls (MK1): delivery tickets, bills of lading, or both.
   const words = vocabulary((await getSettings().catch(() => null))?.industry);
   // Dispatch switched off (MOD1): tickets are entered against the customer's job, from here.
@@ -59,7 +62,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
         .map((t) => ({ id: t.id, number: t.ticket_number, summary: `${t.snapshot.order_number} load ${t.snapshot.load_number} · ${trimNumber(t.quantity)} ${t.unit_code} · ${photos.get(t.ticket_number) ? "photo attached" : "no photo"}` }))
     : [];
   const listHref = `/tickets?${new URLSearchParams({ view, ...(view === "check" && show !== "all" ? { show } : {}), ...(sp.q ? { q: sp.q } : {}), ...(reason ? { reason } : {}), ...(photoFilter ? { photo: photoFilter } : {}) })}`;
-  const tabCount: Partial<Record<TicketView, number>> = { awaiting: awaiting.rows.length, check: counts.review + counts.submitted };
+  const tabCount: Partial<Record<TicketView, number>> = { awaiting: awaiting.rows.length, check: counts.review + counts.submitted + mistakes.length };
   const checkCount: Record<CheckFilter, number> = { all: counts.review + counts.submitted, flagged: counts.review, new: counts.submitted };
   // A ticket opened from "To check" keeps its place in the same list (position and Next follow this filter).
   const queueName = show === "all" ? "review" : show;
@@ -136,6 +139,17 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
           )}
         </Card>
       ) : (
+        <>
+        {view === "check" && (
+          <MistakeReports
+            reports={mistakes}
+            driverName={(id) => names.drivers.get(id) ?? "a driver"}
+            timeZone={timezone}
+            canReview={can(access, "tickets.review")}
+            title={`Drivers report a mistake (${mistakes.length})`}
+            description="A driver says a ticket they sent is wrong. Open the ticket, check the paper ticket or the photo, and correct it; or mark the report handled if the ticket is right."
+          />
+        )}
         <Card>
           {view === "check" && (
             <div className="border-b border-line px-5 py-3 sm:px-6">
@@ -212,6 +226,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
             </TableWrap>
           )}
         </Card>
+        </>
       )}
     </>
   );

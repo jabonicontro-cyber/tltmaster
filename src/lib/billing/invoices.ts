@@ -17,6 +17,16 @@ export interface InvoiceLite {
   payments: InvoicePaymentLite[];
 }
 
+/**
+ * Overdue but never sent (owner decision 2026-11-17, BL1): an issued invoice past its due date with money still owed, that
+ * was never actually sent: no email delivery proof and no "Marked as sent" (both set sent_at: the database records an
+ * email send only with the server's proof, 20261120009300, and a send by hand with how it went, 20261120011200). The
+ * customer may never have seen it, so the office is told to send it now or record that it went out. A warning only.
+ */
+export function overdueNeverSent(i: Pick<InvoiceLite, "status" | "total_cents" | "payments" | "due_date"> & { sent_at: string | null }, today: string): boolean {
+  return i.status === "issued" && !i.sent_at && Boolean(i.due_date && i.due_date < today) && balanceCents(i) > 0;
+}
+
 /** Paid so far (active payments only). */
 export const paidCents = (i: Pick<InvoiceLite, "payments">) => i.payments.filter((p) => !p.voided_at).reduce((n, p) => n + Number(p.amount_cents), 0);
 /** Still owed; nothing is owed on a draft or a void invoice. */

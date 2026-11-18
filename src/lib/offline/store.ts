@@ -12,7 +12,8 @@ import type { Stop } from "@/lib/dispatch/wait-times";
 //
 // Browser storage can be missing or refuse writes (private mode, full disk); every call is wrapped and reports it.
 
-export type OutboxKind = "ticket" | "inspection" | "stop" | "report";
+/** mistake: "Mistake on my ticket" (TM1), sent like a problem report, with its one optional photo after it. */
+export type OutboxKind = "ticket" | "inspection" | "stop" | "report" | "mistake";
 
 export interface OutboxItem {
   /** Also the idempotency key sent with the item. */
@@ -46,6 +47,8 @@ export interface SnapshotLoad {
   trailer: string | null;
   canSubmitTicket: boolean;
   tickets: string[];
+  /** The sent tickets with their ids and paper numbers ("Mistake on my ticket" without signal, TM1); older days have none. */
+  ticketRefs?: Array<{ id: string; number: string; paper: string | null }>;
   lines: Array<{ id: string; description: string; unit_code: string }>;
   /** Pickup and job site, or the order's stops in order (MK2) with a label each. */
   stops: Array<{ stop: Stop; arrivedAt: string | null; departedAt: string | null; label?: string }>;

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type SyntheticEvent } from "react";
 import { DriverTicketForm } from "@/components/driver/driver-ticket-form";
 import { FieldReportForm } from "@/components/driver/field-report-form";
+import { TicketMistakeForm } from "@/components/driver/ticket-mistake-form";
 import { StopButtons } from "@/components/driver/stop-buttons";
 import { InspectionForm } from "@/components/fleet/inspection-form";
 import { rawStored, readDay, readOutbox, sentSummary } from "@/lib/offline/store";
@@ -29,13 +30,15 @@ export function OfflineDay() {
   const [ticketFor, setTicketFor] = useState<string | null>(null);
   // A problem report without signal (walkthrough P1): a breakdown where there is no coverage waits on the phone too.
   const [reportFor, setReportFor] = useState<string | null>(null);
+  // "Mistake on my ticket" without signal (TM1): the ticket chosen, waiting on the phone like a report.
+  const [mistakeFor, setMistakeFor] = useState<{ id: string; number: string } | null>(null);
   const items = useOutbox(day?.userId ?? null);
   const { flush, sending } = useOutboxFlush(day?.userId ?? null);
   const [back, setBack] = useState<null | "connecting" | "ready">(null);
   // Something half filled in on this page (an open ticket, a started inspection): never thrown away by leaving.
   const busyWithForm = useRef(false);
   const editingRef = useRef(false);
-  useEffect(() => { editingRef.current = ticketFor !== null || reportFor !== null; }, [ticketFor, reportFor]);
+  useEffect(() => { editingRef.current = ticketFor !== null || reportFor !== null || mistakeFor !== null; }, [ticketFor, reportFor, mistakeFor]);
   const markBusy = (e: SyntheticEvent) => {
     if (e.type === "input" || (e.target as HTMLElement).closest?.("button[aria-pressed]")) busyWithForm.current = true;
   };
@@ -97,7 +100,14 @@ export function OfflineDay() {
       </p>
       {backNote}
       <OutboxList items={items} timeZone={day.timezone} sending={sending} />
-      {reporting ? (
+      {mistakeFor ? (
+        <section aria-label="Mistake on my ticket" className="rounded-panel bg-card p-4 ring-1 ring-line">
+          <h2 className="mb-1 text-xl font-black">Mistake on ticket {mistakeFor.number}</h2>
+          <p className="mb-4 text-muted">Saved on this phone until you have signal</p>
+          <TicketMistakeForm ticketId={mistakeFor.id} ticketNumber={mistakeFor.number} queue={{ userId: day.userId, timeZone: day.timezone }}
+            onQueued={() => window.setTimeout(() => setMistakeFor(null), 2500)} onBack={() => setMistakeFor(null)} />
+        </section>
+      ) : reporting ? (
         <section aria-label="Report a problem" className="rounded-panel bg-card p-4 ring-1 ring-line">
           <h2 className="mb-1 text-xl font-black">Report a problem</h2>
           <p className="mb-4 text-muted">{reporting.orderNumber} · load {reporting.loadNumber} · saved on this phone until you have signal</p>
@@ -148,6 +158,11 @@ export function OfflineDay() {
                     <button type="button" onClick={() => setReportFor(l.assignmentId)} className="min-h-12 w-full rounded-xl bg-card px-4 text-base font-semibold text-ink ring-1 ring-line">
                       Report a problem
                     </button>
+                    {(l.ticketRefs ?? []).map((t) => (
+                      <button key={t.id} type="button" onClick={() => setMistakeFor({ id: t.id, number: t.number })} className="min-h-12 w-full rounded-xl bg-card px-4 text-base font-semibold text-ink ring-1 ring-line">
+                        Mistake on ticket {t.number}{t.paper ? ` (paper ${t.paper})` : ""}
+                      </button>
+                    ))}
                   </li>
                 ))}
               </ul>
