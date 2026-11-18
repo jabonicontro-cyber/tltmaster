@@ -47,3 +47,6 @@ next-env.d.ts
 /playwright-report/
 /supabase/.temp/
 /supabase/.branches/
+
+# Agent worktrees (copies of the repository with their own node_modules): never scanned by builds or Tailwind.
+.claude/worktrees/
