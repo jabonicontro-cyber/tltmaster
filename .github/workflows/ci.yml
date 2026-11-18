@@ -86,7 +86,9 @@ jobs:
   # scripts/dev-stack). The full suite runs on demand (workflow_dispatch → full_browser_suite).
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The full suite (one worker, on demand) passed 57 minutes on 2026-11-18; 90 leaves room without hiding a hang
+    # (each test still has its own 60 s limit).
+    timeout-minutes: 90
     services:
       postgres:
         image: postgres:16
