@@ -82,7 +82,7 @@ export function buildQuoteDocument(args: {
         quantity: formatQuantity(milli),
         unit,
         rate: formatCents(l.unit_rate_cents ?? 0),
-        amount: formatCents(l.amount_cents),
+        amount: formatCents(l.amount_cents ?? 0),
         isDiscount,
       };
     }
@@ -92,7 +92,7 @@ export function buildQuoteDocument(args: {
       quantity: "",
       unit: "",
       rate: formatBp(l.percent_bp ?? 0),
-      amount: formatCents(l.amount_cents),
+      amount: formatCents(l.amount_cents ?? 0),
       isDiscount,
     };
   });
@@ -129,11 +129,12 @@ export function buildQuoteDocument(args: {
     // Quantities are summarized per unit; different units are never added together.
     quantitySummary: [...qtyByUnit.entries()].map(([unit, milli]) => ({ unit, quantity: formatQuantity(milli) })),
     totals: {
-      subtotal: formatCents(version.subtotal_cents),
-      discount: version.discount_cents > 0 ? `-${formatCents(version.discount_cents)}` : null,
-      tax: version.tax_rate_bp > 0 ? formatCents(version.tax_cents) : null,
+      // The document is the customer's quote: only people who see sales totals open it (SEC7; the loaders check).
+      subtotal: formatCents(version.subtotal_cents ?? 0),
+      discount: (version.discount_cents ?? 0) > 0 ? `-${formatCents(version.discount_cents ?? 0)}` : null,
+      tax: version.tax_rate_bp > 0 ? formatCents(version.tax_cents ?? 0) : null,
       taxLabel: `Sales tax (${formatBp(version.tax_rate_bp)})`,
-      total: formatCents(version.total_cents),
+      total: formatCents(version.total_cents ?? 0),
     },
     jobInstructions: version.job_instructions,
     terms: version.terms,

@@ -13,6 +13,8 @@ const SOURCE_LABEL: Record<QuoteLineRow["price_source"], string> = {
 
 /** Line items with pricing snapshots — used for quote revisions and orders. */
 export function QuoteLinesTable({ lines }: { lines: Array<Omit<QuoteLineRow, "quote_version_id">> }) {
+  // Line amounts only for billing or pricing access (SEC7): the column is left out when they were not read.
+  const amounts = lines.some((l) => l.amount_cents !== null);
   return (
     <TableWrap>
       <Table>
@@ -23,7 +25,7 @@ export function QuoteLinesTable({ lines }: { lines: Array<Omit<QuoteLineRow, "qu
             <Th align="right">Qty</Th>
             <Th>Unit</Th>
             <Th align="right">Rate</Th>
-            <Th align="right">Amount</Th>
+            {amounts && <Th align="right">Amount</Th>}
           </tr>
         </thead>
         <tbody>
@@ -48,9 +50,11 @@ export function QuoteLinesTable({ lines }: { lines: Array<Omit<QuoteLineRow, "qu
               <Td align="right">{l.quantity !== null ? formatQuantity(numericToMilli(l.quantity) ?? 0) : ""}</Td>
               <Td>{l.unit_label}</Td>
               <Td align="right">{l.calc_method === "per_unit" ? formatCents(l.unit_rate_cents ?? 0) : formatBp(l.percent_bp ?? 0)}</Td>
-              <Td align="right" className={l.amount_cents < 0 ? "font-semibold text-green-800" : "font-semibold"}>
-                {formatCents(l.amount_cents)}
-              </Td>
+              {amounts && (
+                <Td align="right" className={(l.amount_cents ?? 0) < 0 ? "font-semibold text-green-800" : "font-semibold"}>
+                  {formatCents(l.amount_cents ?? 0)}
+                </Td>
+              )}
             </Tr>
           ))}
         </tbody>

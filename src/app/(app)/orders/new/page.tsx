@@ -1,6 +1,6 @@
 import { QuoteEditor } from "@/components/quotes/quote-editor";
 import { PageHeader } from "@/components/ui/page-header";
-import { can, typedPriceChecked } from "@/lib/permissions";
+import { can, canSeeSalesTotals, typedPriceChecked } from "@/lib/permissions";
 import { uuid } from "@/lib/schemas/common";
 import { isIsoDate } from "@/lib/dates";
 import { requireAnyPagePermission } from "@/server/auth";
@@ -46,6 +46,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
         validityDays={ref.settings.quote_validity_days}
         canOverride={can(access, "pricing.override")}
         taxLocked={!can(access, "orders.edit")}
+        showTotals={canSeeSalesTotals(access)}
         canSetTaxDefault={can(access, "settings.manage")}
         typedPriceChecked={typedPriceChecked(access)}
         canEditCustomers={can(access, "customers.edit")}

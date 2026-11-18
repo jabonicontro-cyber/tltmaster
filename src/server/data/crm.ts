@@ -1,6 +1,7 @@
 import "server-only";
 import type { Activity, CrmTask, CustomerHistory, Opportunity } from "@/lib/crm/labels";
 import { createClient } from "@/server/supabase/server";
+import { seesSalesTotals } from "./sales-money";
 
 // Company CRM reads (20261119000100). Everything runs as the signed-in person, so RLS decides what is visible.
 // Before that update is installed every loader returns null and the pages say so.
@@ -21,8 +22,14 @@ export async function loadCustomerCrm(customerId: string) {
     activities: (acts.data ?? []) as Activity[],
     tasks: (tasks.data ?? []) as CrmTask[],
     opportunities: (opps.data ?? []) as Opportunity[],
-    history: history.data as CustomerHistory,
+    // Order totals only for billing or pricing access (SEC7): the database leaves them out for others; a demo role
+    // preview without that access gets them taken out here.
+    history: (await seesSalesTotals()) ? (history.data as CustomerHistory) : withoutTotals(history.data as CustomerHistory),
   };
+}
+
+function withoutTotals(h: CustomerHistory): CustomerHistory {
+  return { ...h, ordered_cents_365d: null, recent_orders: h.recent_orders.map((o) => ({ ...o, total_cents: null })) };
 }
 
 /** The pipeline and the follow-ups of the next week (open tasks, opportunity follow-up dates). */

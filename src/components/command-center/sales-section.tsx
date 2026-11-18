@@ -45,7 +45,7 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
             </div>
           </div>
           <div className="text-right">
-            <div className="font-semibold tabular">{formatCents(q.total_cents)}</div>
+            {q.total_cents !== null && <div className="font-semibold tabular">{formatCents(q.total_cents)}</div>}
             <QuoteStatusBadge status={q.status} />
           </div>
         </li>
@@ -62,10 +62,10 @@ export function SalesSection({ quotes, from, to, customer, customers, followupDa
 }) {
   const figures = (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Stat icon={<FileClock className="size-5" />} label="Sent, awaiting response" value={quotes.awaiting.count} sub={formatCents(quotes.awaiting.totalCents)} href="/quotes?status=sent" />
+      <Stat icon={<FileClock className="size-5" />} label="Sent, awaiting response" value={quotes.awaiting.count} sub={quotes.showTotals ? formatCents(quotes.awaiting.totalCents) : undefined} href="/quotes?status=sent" />
       <Stat icon={<AlertTriangle className="size-5" />} label="Need follow-up" value={quotes.followUp.length + quotes.pastExpiration.length} sub={`${quotes.followUp.length} no reply in ${followupDays}+ days · ${quotes.pastExpiration.length} past expiration`} tone={quotes.followUp.length + quotes.pastExpiration.length > 0 ? "warn" : "default"} href={compact ? moreHref : undefined} />
-      <Stat icon={<CheckCircle2 className="size-5" />} label={`Accepted ${formatDate(from)} – ${formatDate(to)}`} value={quotes.accepted.count} sub={`${formatCents(quotes.accepted.totalCents)}${quotes.winRate !== null ? ` · ${quotes.winRate}% of decided` : ""}`} tone="good" href="/quotes?status=accepted" />
-      <Stat icon={<FileText className="size-5" />} label="Drafts not yet sent" value={quotes.drafts.count} sub={`${formatCents(quotes.drafts.totalCents)}${quotes.staleDrafts.length ? ` · ${quotes.staleDrafts.length} untouched 7+ days` : ""}`} href="/quotes?status=draft" />
+      <Stat icon={<CheckCircle2 className="size-5" />} label={`Accepted ${formatDate(from)} – ${formatDate(to)}`} value={quotes.accepted.count} sub={[quotes.showTotals ? formatCents(quotes.accepted.totalCents) : "", quotes.winRate !== null ? `${quotes.winRate}% of decided` : ""].filter(Boolean).join(" · ") || undefined} tone="good" href="/quotes?status=accepted" />
+      <Stat icon={<FileText className="size-5" />} label="Drafts not yet sent" value={quotes.drafts.count} sub={[quotes.showTotals ? formatCents(quotes.drafts.totalCents) : "", quotes.staleDrafts.length ? `${quotes.staleDrafts.length} untouched 7+ days` : ""].filter(Boolean).join(" · ") || undefined} href="/quotes?status=draft" />
     </div>
   );
   if (compact) {

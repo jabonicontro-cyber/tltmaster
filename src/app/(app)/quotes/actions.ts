@@ -8,6 +8,7 @@ import { quoteDraftInput, toSavePayload, type QuoteDraftInput } from "@/lib/sche
 import { uuid } from "@/lib/schemas/common";
 import { QUOTE_STATUSES } from "@/lib/quotes/status";
 import { formatCents } from "@/lib/money";
+import { canSeeSalesTotals } from "@/lib/permissions";
 import { formatDateLong } from "@/lib/dates";
 import { assertPermission, getAccess } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -27,15 +28,17 @@ function revalidateQuote(id: string) {
   revalidatePath("/command-center");
 }
 
-export async function saveQuoteDraft(input: QuoteDraftInput): Promise<ActionResult<{ quoteId: string; editSeq: number; quoteNumber: string; totalCents: number }>> {
+export async function saveQuoteDraft(input: QuoteDraftInput): Promise<ActionResult<{ quoteId: string; editSeq: number; quoteNumber: string; totalCents: number | null }>> {
   return guard(async () => {
-    await assertPermission("quotes.edit");
+    const access = await assertPermission("quotes.edit");
     const parsed = quoteDraftInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("save_quote_draft", { p_payload: toSavePayload(parsed.data) });
     if (error) return fail(dbErrorMessage(error));
-    const r = data as { quote_id: string; edit_seq: number; quote_number: string; total_cents: number };
+    // The total comes back only for billing or pricing access (SEC7).
+    const r = data as { quote_id: string; edit_seq: number; quote_number: string; total_cents: number | null };
+    if (!canSeeSalesTotals(access)) r.total_cents = null;
     revalidateQuote(r.quote_id);
     if (parsed.data.saveSite) revalidatePath(`/customers/${parsed.data.customerId}`);
     return ok({ quoteId: r.quote_id, editSeq: r.edit_seq, quoteNumber: r.quote_number, totalCents: r.total_cents }, `Quote ${r.quote_number} saved.`);
@@ -201,7 +204,7 @@ export async function defaultEmailContent(quoteId: string) {
       greeting,
       "",
       `Attached is quote ${doc.quoteNumber}${version.version_no > 1 ? ` (revision ${version.version_no})` : ""}${about}.`,
-      `Total: ${formatCents(version.total_cents)}. This quote is valid until ${formatDateLong(version.valid_until)}.`,
+      `${version.total_cents !== null ? `Total: ${formatCents(version.total_cents)}. ` : ""}This quote is valid until ${formatDateLong(version.valid_until)}.`,
       "",
       "Please reply to this email or call us with any questions or to accept the quote.",
       "",

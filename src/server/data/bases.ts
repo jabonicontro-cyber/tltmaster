@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
+import { seesSalesTotals } from "./sales-money";
 
 // Dispatch bases (migrations 20261120000100 and 000200). Every reader handles a database without them: the page then
 // says it needs a database update instead of failing.
@@ -19,7 +20,8 @@ export type DispatchBase = {
   is_default: boolean;
 };
 
-export type BaseSummary = { id: string; trucks: number; trucks_available: number; drivers: number; orders: number; loads: number; ordered_cents: number };
+/** ordered_cents is null without billing or pricing access (SEC7). */
+export type BaseSummary = { id: string; trucks: number; trucks_available: number; drivers: number; orders: number; loads: number; ordered_cents: number | null };
 
 const NOT_INSTALLED = new Set(["42P01", "PGRST205", "PGRST202", "42703", "PGRST204"]);
 export const notInstalled = (e: { code?: string } | null | undefined) => !!e && NOT_INSTALLED.has(e.code ?? "");
@@ -53,7 +55,9 @@ export async function baseSummary(from: string, to: string): Promise<BaseSummary
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("dispatch_base_summary", { p_from: from, p_to: to });
   if (error) return [];
-  return (data ?? []) as BaseSummary[];
+  const rows = (data ?? []) as BaseSummary[];
+  // The database leaves the ordered value out without money access; a demo role preview without it too (SEC7).
+  return (await seesSalesTotals()) ? rows : rows.map((r) => ({ ...r, ordered_cents: null }));
 }
 
 /** Which bases each restricted person is limited to (users.manage reads everyone; others only themselves). */

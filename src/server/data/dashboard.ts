@@ -3,6 +3,7 @@ import { createClient } from "@/server/supabase/server";
 import { addDays } from "@/lib/dates";
 import { isPastExpiration, needsFollowUp } from "@/lib/quotes/status";
 import type { QuoteListRow } from "./types";
+import { quoteTotals, seesSalesTotals } from "./sales-money";
 
 export interface DashboardFilters {
   from: string;
@@ -16,7 +17,7 @@ export interface QuoteMetric {
 }
 
 function metric(rows: QuoteListRow[]): QuoteMetric {
-  return { count: rows.length, totalCents: rows.reduce((s, r) => s + Number(r.total_cents), 0) };
+  return { count: rows.length, totalCents: rows.reduce((s, r) => s + Number(r.total_cents ?? 0), 0) };
 }
 
 /** All figures are computed from the quotes the signed-in user can see (RLS). */
@@ -26,7 +27,7 @@ export async function loadQuoteDashboard(filters: DashboardFilters, today: strin
   // Decided quotes in the period: accepted / declined dates are tracked on the quote.
   let decided = supabase
     .from("quotes")
-    .select("id, status, accepted_at, closed_at, customer_id, quote_versions!quotes_current_version_fk(total_cents)")
+    .select("id, status, accepted_at, closed_at, customer_id, current_version_id")
     .in("status", ["accepted", "declined"])
     .or(`and(status.eq.accepted,accepted_at.gte.${filters.from},accepted_at.lt.${addDays(filters.to, 1)}),and(status.eq.declined,closed_at.gte.${filters.from},closed_at.lt.${addDays(filters.to, 1)})`);
   let recentAccepted = supabase.from("quote_list").select("*").eq("status", "accepted").gte("accepted_at", filters.from).lt("accepted_at", addDays(filters.to, 1)).order("accepted_at", { ascending: false }).limit(8);
@@ -48,16 +49,17 @@ export async function loadQuoteDashboard(filters: DashboardFilters, today: strin
   const expiringSoon = sent.filter((q) => q.valid_until >= today && q.valid_until <= addDays(today, 7));
 
   // PostgREST returns the to-one embed as an object; untyped clients see an array type.
-  const decidedRows = (decidedRes.data ?? []) as unknown as Array<{ status: string; quote_versions: { total_cents: number } | { total_cents: number }[] | null }>;
-  const totalOf = (r: (typeof decidedRows)[number]) => {
-    const v = Array.isArray(r.quote_versions) ? r.quote_versions[0] : r.quote_versions;
-    return Number(v?.total_cents ?? 0);
-  };
+  const decidedRows = (decidedRes.data ?? []) as unknown as Array<{ status: string; current_version_id: string }>;
+  // Quote totals only for billing or pricing access (SEC7, 20261120024700); showTotals tells the page.
+  const showTotals = await seesSalesTotals();
+  const decidedTotals = showTotals ? await quoteTotals(decidedRows.map((r) => r.current_version_id)) : null;
+  const totalOf = (r: (typeof decidedRows)[number]) => decidedTotals?.get(r.current_version_id)?.total_cents ?? 0;
   const accepted = decidedRows.filter((r) => r.status === "accepted");
   const declined = decidedRows.filter((r) => r.status === "declined");
   const decidedCount = accepted.length + declined.length;
 
   return {
+    showTotals,
     drafts: metric(drafts),
     awaiting: metric(sent),
     followUp,

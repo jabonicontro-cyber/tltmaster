@@ -7,13 +7,24 @@ import { buttonClasses } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { requirePagePermission } from "@/server/auth";
+import { canSeeSalesTotals } from "@/lib/permissions";
 import { loadQuoteDocument } from "@/server/quotes/document-loader";
 
 export const metadata = { title: "Quote preview" };
 
 export default async function QuoteVersionPage({ params }: { params: Promise<{ id: string; versionId: string }> }) {
-  await requirePagePermission("quotes.view");
+  const access = await requirePagePermission("quotes.view");
   const { id, versionId } = await params;
+  // The quote document shows the customer's prices and totals: billing or pricing access only (SEC7).
+  if (!canSeeSalesTotals(access)) {
+    return (
+      <>
+        <PageHeader title="Quote document" crumbs={[{ label: "Quotes", href: "/quotes" }, { label: "Quote", href: `/quotes/${id}` }, { label: "Document" }]} />
+        <Notice title="Shown to the office">The quote document with its totals is shown to people who handle prices or billing. The quote page shows its lines and rates.</Notice>
+        <p className="mt-4"><Link href={`/quotes/${id}`} className="font-semibold underline">Back to the quote</Link></p>
+      </>
+    );
+  }
   const loaded = await loadQuoteDocument(id, versionId);
   if (!loaded) notFound();
   const { quote, version, doc } = loaded;

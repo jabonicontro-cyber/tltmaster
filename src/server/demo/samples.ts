@@ -353,9 +353,11 @@ async function guidedOnboarding(db: Db): Promise<number> {
 async function crm(db: Db, today: string, me: string): Promise<number> {
   const n = await count(db, "crm_opportunities");
   if (n === null || n > 0) return 0;
-  const orders = ((await db.from("orders").select("customer_id, total_cents, order_date").neq("status", "canceled").order("order_date", { ascending: false }).limit(200)).data ?? []) as Array<{ customer_id: string; total_cents: number }>;
+  const orders = ((await db.from("orders").select("id, customer_id, order_date").neq("status", "canceled").order("order_date", { ascending: false }).limit(200)).data ?? []) as Array<{ id: string; customer_id: string }>;
+  // Order totals through order_totals (SEC7, 20261120024700): the demo owner running the samples has money access.
+  const totals = new Map((((await db.rpc("order_totals", { p_orders: orders.map((o) => o.id) })).data ?? []) as Array<{ order_id: string; total_cents: number | string }>).map((t) => [t.order_id, Number(t.total_cents)]));
   const latest = new Map<string, number>();
-  for (const o of orders) if (!latest.has(o.customer_id)) latest.set(o.customer_id, o.total_cents);
+  for (const o of orders) if (!latest.has(o.customer_id) && totals.has(o.id)) latest.set(o.customer_id, totals.get(o.id)!);
   const customers = [...latest.keys()].slice(0, 3);
   if (customers.length === 0) return 0;
   let added = 0;

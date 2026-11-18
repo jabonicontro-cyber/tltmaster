@@ -7,6 +7,7 @@ import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { invoicesByHandoff, invoicingSettings, type Issuer } from "./invoices";
 import { customerTicketBalances } from "./ticket-payments";
+import { orderLineAmounts, orderTotals } from "./sales-money";
 
 export type BalanceInvoiceRow = Pick<InvoiceLite, "status" | "total_cents" | "payments" | "due_date"> & { id: string; number: string | null; issue_date: string | null; sent_at: string | null };
 
@@ -57,14 +58,16 @@ export async function getCustomerBalance(customerId: string, today: string): Pro
   const priced = inReview.filter((o) => o.tickets_accepted > 0).map((o) => o.order_id);
   const [lines, tickets, orders] = priced.length
     ? await Promise.all([
-        supabase.from("order_lines").select("id, order_id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable, amount_cents").in("order_id", priced),
+        supabase.from("order_lines").select("id, order_id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable").in("order_id", priced),
         allRows(() => supabase.from("delivery_tickets").select("order_id, order_line_id, status, quantity, unit_code").in("order_id", priced).in("status", ["submitted", "needs_review", "accepted"]).order("id")),
-        supabase.from("orders").select("id, tax_rate_bp, total_cents").in("id", priced),
+        supabase.from("orders").select("id, tax_rate_bp").in("id", priced),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];
-  const lineRows = (lines.data ?? []) as Array<DraftOrderLine & { order_id: string }>;
+  // Line amounts and order totals through order_line_amounts / order_totals (SEC7, 20261120024700): billing access.
+  const [amounts, totals] = priced.length ? await Promise.all([orderLineAmounts(priced), orderTotals(priced)]) : [new Map<string, number>(), new Map()];
+  const lineRows = ((lines.data ?? []) as Array<Omit<DraftOrderLine, "amount_cents"> & { id: string; order_id: string }>).map((l) => ({ ...l, amount_cents: amounts?.get(l.id) ?? 0 })) as Array<DraftOrderLine & { order_id: string }>;
   const ticketRows = (tickets.data ?? []) as Array<DraftTicket & { order_id: string }>;
-  const orderRows = new Map(((orders.data ?? []) as Array<{ id: string; tax_rate_bp: number; total_cents: number }>).map((o) => [o.id, o]));
+  const orderRows = new Map(((orders.data ?? []) as Array<{ id: string; tax_rate_bp: number }>).map((o) => [o.id, { ...o, total_cents: totals?.get(o.id)?.total_cents ?? 0 }]));
   const delivered = inReview.map((o) => {
     const order = orderRows.get(o.order_id);
     const value = o.tickets_accepted > 0 && order

@@ -151,7 +151,7 @@ export interface QuoteListRow {
   site_label: string;
   site_line1: string;
   site_city: string;
-  total_cents: number;
+  total_cents: number | null;
   locked_at: string | null;
 }
 
@@ -198,11 +198,11 @@ export interface QuoteVersionRow {
   terms: string;
   internal_notes: string;
   tax_rate_bp: number;
-  subtotal_cents: number;
-  discount_cents: number;
-  taxable_cents: number;
-  tax_cents: number;
-  total_cents: number;
+  subtotal_cents: number | null;
+  discount_cents: number | null;
+  taxable_cents: number | null;
+  tax_cents: number | null;
+  total_cents: number | null;
   revision_reason: string;
   locked_at: string | null;
   sent_at: string | null;
@@ -257,7 +257,7 @@ export interface QuoteLineRow {
   catalog_percent_bp: number | null;
   price_source: "customer" | "standard" | "manual" | "override";
   taxable: boolean;
-  amount_cents: number;
+  amount_cents: number | null;
 }
 
 export interface StatusEventRow {
@@ -350,7 +350,7 @@ export interface OrderListRow {
   site_line1: string;
   site_city: string;
   customer_po: string;
-  total_cents: number;
+  total_cents: number | null;
   is_sample: boolean;
   created_at: string;
   order_date: string;
@@ -391,11 +391,11 @@ export interface OrderRow {
   terms: string;
   internal_notes: string;
   tax_rate_bp: number;
-  subtotal_cents: number;
-  discount_cents: number;
-  taxable_cents: number;
-  tax_cents: number;
-  total_cents: number;
+  subtotal_cents: number | null;
+  discount_cents: number | null;
+  taxable_cents: number | null;
+  tax_cents: number | null;
+  total_cents: number | null;
   status_note: string;
   is_sample: boolean;
   created_by: string | null;

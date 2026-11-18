@@ -96,6 +96,20 @@ export async function withSession(fn: (s: Session) => Promise<void>): Promise<vo
   }
 }
 
+/**
+ * Read as the database superuser, then act as `userId` again. For checks of stored figures that people read through
+ * functions rather than the tables (order and quote totals, SEC7 20261120024700): the test's subject is the data, not
+ * who may read it.
+ */
+export async function readAsAdmin<T extends pg.QueryResultRow = pg.QueryResultRow>(s: Session, userId: string | null, sql: string, params?: unknown[]): Promise<pg.QueryResult<T>> {
+  await s.asAdmin();
+  try {
+    return await s.query<T>(sql, params);
+  } finally {
+    await s.as(userId);
+  }
+}
+
 /** Expect a promise to reject with a Postgres error; returns the error. */
 export async function pgError(p: Promise<unknown>): Promise<{ code: string; message: string }> {
   try {

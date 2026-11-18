@@ -2,6 +2,7 @@ import "server-only";
 import type { OrderRow } from "@/lib/order-to-cash";
 import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
+import { orderTotals } from "./sales-money";
 
 // Order-to-Cash Control Center (B42 increment 1): every open order's position, read from billing_order_status (the
 // database's own readiness) plus confirmed orders still waiting for a date. Caller's company (RLS); read-only.
@@ -13,7 +14,7 @@ export async function orderToCashRows(): Promise<OrderRow[]> {
   const supabase = await createClient();
   const [billing, unscheduled] = await Promise.all([
     allRows(() => supabase.from("billing_order_status").select(COLUMNS).order("order_date", { ascending: false }).order("order_id")),
-    supabase.from("orders").select("id, order_number, status, project_name, order_date, total_cents, customers(name)").eq("status", "confirmed").is("scheduled_start", null).limit(500),
+    supabase.from("orders").select("id, order_number, status, project_name, order_date, customers(name)").eq("status", "confirmed").is("scheduled_start", null).limit(500),
   ]);
   if (billing.error) throw new Error(`Order-to-cash could not be read: ${billing.error.message}`);
   if (unscheduled.error) throw new Error(`Order-to-cash could not be read: ${unscheduled.error.message}`);
@@ -23,9 +24,12 @@ export async function orderToCashRows(): Promise<OrderRow[]> {
     tickets_live: n(r.tickets_live), tickets_pending: n(r.tickets_pending), exceptions_count: n(r.exceptions_count),
     changed_since_handoff: Boolean(r.changed_since_handoff), fulfilled: Boolean(r.fulfilled),
   }));
-  const waiting = ((unscheduled.data ?? []) as unknown as Array<{ id: string; order_number: string; status: string; project_name: string | null; order_date: string; total_cents: number | string; customers: { name: string } | null }>).map<OrderRow>((o) => ({
+  const waitingRows = (unscheduled.data ?? []) as unknown as Array<{ id: string; order_number: string; status: string; project_name: string | null; order_date: string; customers: { name: string } | null }>;
+  // Order totals through order_totals (SEC7, 20261120024700): billing or pricing access, as this page needs.
+  const totals = await orderTotals(waitingRows.map((o) => o.id));
+  const waiting = waitingRows.map<OrderRow>((o) => ({
     order_id: o.id, order_number: o.order_number, status: o.status, customer_name: o.customers?.name ?? null, project_name: o.project_name,
-    scheduled_start: null, order_date: o.order_date, completed_at: null, total_cents: n(o.total_cents), loads_total: 0, loads_missing: 0, loads_not_due: 0,
+    scheduled_start: null, order_date: o.order_date, completed_at: null, total_cents: totals?.get(o.id)?.total_cents ?? 0, loads_total: 0, loads_missing: 0, loads_not_due: 0,
     tickets_live: 0, tickets_pending: 0, exceptions_count: 0, readiness: "in_progress", fulfilled: false, fulfillment_gap: "no_loads",
     handed_off_at: null, changed_since_handoff: false, batch_number: null,
   }));

@@ -333,6 +333,14 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // SEC5 (20261120019800): fuel_purchase_amounts needs billing.view, require_company(), and only receipts the person
   // reads anyway (fleet.view / accounting.view, or a driver's own); no company id argument.
   "public.fuel_purchase_amounts",
+  // SEC7 (20261120024700): sales_money_ok reads the caller's own permissions; the visible_* helpers return only rows with
+  // company_id = current_company_id() and nothing without money access; order_totals / order_line_amounts /
+  // quote_totals / quote_line_amounts need orders.view or quotes.view plus money access, require_company(), and the
+  // order's base for base-limited people; sales_history needs orders.view (and the order's base) or quotes.view,
+  // require_company(), billing entries only with billing.view, totals taken out without money access. No company id
+  // argument anywhere.
+  "private.sales_money_ok", "private.visible_order_totals", "private.visible_order_line_amounts", "private.visible_quote_totals",
+  "public.order_totals", "public.order_line_amounts", "public.quote_totals", "public.quote_line_amounts", "public.sales_history",
   // EX1 (20261120024500): the data download. Every function starts with private.data_export_company(): require_company(),
   // an active owner membership there, aal2, billing.view, never a support visit; rows only where company_id = that
   // company, tables only from the fixed list (private.data_export_tables); no company id argument.

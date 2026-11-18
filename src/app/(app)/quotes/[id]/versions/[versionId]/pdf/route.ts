@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAccess } from "@/server/auth";
-import { can } from "@/lib/permissions";
+import { can, canSeeSalesTotals } from "@/lib/permissions";
 import { loadQuoteDocument } from "@/server/quotes/document-loader";
 import { renderQuotePdf } from "@/server/pdf/quote-pdf";
 
@@ -8,7 +8,8 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string; versionId: string }> }) {
   const access = await getAccess();
-  if (!access || !can(access, "quotes.view")) {
+  // The quote document shows the customer's prices and totals: billing or pricing access only (SEC7).
+  if (!access || !can(access, "quotes.view") || !canSeeSalesTotals(access)) {
     return NextResponse.json({ error: "Not permitted" }, { status: 403 });
   }
   const { id, versionId } = await params;

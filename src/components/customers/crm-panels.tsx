@@ -67,7 +67,9 @@ export function HistoryCard({ history, timezone }: { history: CustomerHistory; t
         {history.quiet && <p className="rounded-xl bg-amber-50 px-3 py-2 font-medium text-amber-900">No new order in more than 90 days (last on {formatDate(history.last_order_on!)}).</p>}
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <div><dt className="text-xs text-muted">Orders</dt><dd className="text-lg font-semibold tabular">{history.orders}</dd><dd className="text-xs text-muted">{history.open_orders} open</dd></div>
-          <div><dt className="text-xs text-muted">Ordered, last 12 months</dt><dd className="text-lg font-semibold tabular">{usd(history.ordered_cents_365d)}</dd><dd className="text-xs text-muted">order totals, not invoices</dd></div>
+          {history.ordered_cents_365d !== null && (
+            <div><dt className="text-xs text-muted">Ordered, last 12 months</dt><dd className="text-lg font-semibold tabular">{usd(history.ordered_cents_365d)}</dd><dd className="text-xs text-muted">order totals, not invoices</dd></div>
+          )}
           <div><dt className="text-xs text-muted">Delivered, last 12 months</dt><dd className="font-semibold tabular">{delivered.length ? delivered.map(([u, q]) => `${Number(q).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${u}`).join(" · ") : "–"}</dd><dd className="text-xs text-muted">{history.accepted_tickets} accepted tickets in all</dd></div>
           <div><dt className="text-xs text-muted">Quotes won</dt><dd className="text-lg font-semibold tabular">{winRate === null ? "–" : `${winRate}%`}</dd><dd className="text-xs text-muted">{history.quotes.accepted} of {history.quotes.decided} decided · {history.quotes.open} open</dd></div>
         </dl>
@@ -79,7 +81,7 @@ export function HistoryCard({ history, timezone }: { history: CustomerHistory; t
                 <Link href={`/orders/${o.id}`} className="font-semibold tabular hover:underline">{o.order_number}</Link>
                 <span className="hidden whitespace-nowrap text-muted tabular sm:block">{formatDate(o.order_date)}</span>
                 <span><OrderStatusBadge status={o.status as OrderStatus} /></span>
-                <span className="text-right tabular">{usd(o.total_cents)}</span>
+                <span className="text-right tabular">{o.total_cents !== null ? usd(o.total_cents) : ""}</span>
               </li>
             ))}
           </ul>

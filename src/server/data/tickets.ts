@@ -8,6 +8,7 @@ import { getUserNames } from "./quotes";
 import { referenceKey } from "@/lib/search";
 import { idsClause, ilikePattern, REF_KEYS, referenceMatches } from "./search";
 import { businessToday } from "./settings";
+import { ORDER_LINE_COLUMNS } from "./sales-money";
 import type { OrderLineRow, OrderListRow, UnitRow } from "./types";
 
 export interface TicketSnapshot {
@@ -265,7 +266,7 @@ export async function getLoadForTicket(loadId: string) {
   const [order, assignment, lines, units, trucks, trailers, drivers, tickets, { today }] = await Promise.all([
     supabase.from("order_list").select("*").eq("id", l.order_id).single(),
     supabase.from("dispatch_assignments").select("*").eq("load_id", l.id).eq("status", "active").maybeSingle(),
-    supabase.from("order_lines").select("*").eq("order_id", l.order_id).eq("calc_method", "per_unit").neq("kind", "discount").order("line_no"),
+    supabase.from("order_lines").select(ORDER_LINE_COLUMNS).eq("order_id", l.order_id).eq("calc_method", "per_unit").neq("kind", "discount").order("line_no"),
     supabase.from("units_of_measure").select("*").order("sort_order"),
     supabase.from("trucks").select("id, unit_number, active").order("unit_number"),
     supabase.from("trailers").select("id, unit_number, active").order("unit_number"),
@@ -277,7 +278,7 @@ export async function getLoadForTicket(loadId: string) {
     load: l,
     order: order.data as OrderListRow,
     assignment: (assignment.data ?? null) as AssignmentRow | null,
-    lines: (lines.data ?? []) as OrderLineRow[],
+    lines: ((lines.data ?? []) as unknown as OrderLineRow[]).map((ln) => ({ ...ln, amount_cents: null })),
     units: (units.data ?? []) as UnitRow[],
     trucks: (trucks.data ?? []) as Array<{ id: string; unit_number: string; active: boolean }>,
     trailers: (trailers.data ?? []) as Array<{ id: string; unit_number: string; active: boolean }>,
