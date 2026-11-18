@@ -33,6 +33,15 @@ export function useRefresh() {
     }
   }, [refreshing]);
 
+  // The new page can remove the component that asked (a "Hand off" button gone once the order is handed off): the
+  // effect above then never sees the end of the transition. Unmounting means the new page is on screen, so the
+  // waiting callers go on at once (their toast shows then) instead of after the 20-second fallback.
+  useEffect(() => () => {
+    const done = waiting.current;
+    waiting.current = [];
+    for (const resolve of done) resolve();
+  }, []);
+
   const refresh = useCallback(
     () =>
       new Promise<void>((resolve) => {
