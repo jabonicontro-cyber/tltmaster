@@ -329,7 +329,9 @@ begin
       ('public.save_order_draft(jsonb)'::regprocedure, $old$    'total_cents', case when private.sales_money_ok() then v_order.total_cents end);$old$,
        $new$    'total_cents', v_order.total_cents);$new$),
       ('public.save_quote_draft(jsonb)'::regprocedure, $old$    'total_cents', case when private.sales_money_ok() then v_version.total_cents end);$old$,
-       $new$    'total_cents', v_version.total_cents);$new$)) as t(fn, old_text, new_text)
+       $new$    'total_cents', v_version.total_cents);$new$),
+      ('private.operational_exceptions_all(uuid)'::regprocedure, $old$'project_name', o.project_name, 'total_cents', case when private.sales_money_ok() then o.total_cents end)$old$,
+       $new$'project_name', o.project_name, 'total_cents', o.total_cents)$new$)) as t(fn, old_text, new_text)
   loop
     v_def := pg_get_functiondef(r.fn);
     if position(r.old_text in v_def) > 0 then

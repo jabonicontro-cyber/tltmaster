@@ -605,7 +605,7 @@ grant execute on function public.sales_history(text, uuid) to authenticated;
 -- Saving an order or a quote: the answer carries the new total only for people with money access
 -- -----------------------------------------------------------------------------
 -- save_order_draft (orders.create: dispatchers enter phoned-in orders) and save_quote_draft answer with the saved
--- total. Their bodies are long and otherwise unchanged, so only the final answer is narrowed, in place: the saved
+-- total; the Command Center's unscheduled-order item carries it in its details. Their bodies are long and otherwise unchanged, so only the final answer is narrowed, in place: the saved
 -- definition gets 'total_cents' only when private.sales_money_ok(). Each replacement must match exactly once.
 do $$
 declare
@@ -617,7 +617,10 @@ begin
       ('public.save_order_draft(jsonb)'::regprocedure, $old$    'total_cents', v_order.total_cents);$old$,
        $new$    'total_cents', case when private.sales_money_ok() then v_order.total_cents end);$new$),
       ('public.save_quote_draft(jsonb)'::regprocedure, $old$    'total_cents', v_version.total_cents);$old$,
-       $new$    'total_cents', case when private.sales_money_ok() then v_version.total_cents end);$new$)) as t(fn, old_text, new_text)
+       $new$    'total_cents', case when private.sales_money_ok() then v_version.total_cents end);$new$),
+      -- The Command Center's "needs a delivery date" item carried the order total in its details (read by dispatchers).
+      ('private.operational_exceptions_all(uuid)'::regprocedure, $old$'project_name', o.project_name, 'total_cents', o.total_cents)$old$,
+       $new$'project_name', o.project_name, 'total_cents', case when private.sales_money_ok() then o.total_cents end)$new$)) as t(fn, old_text, new_text)
   loop
     v_def := pg_get_functiondef(r.fn);
     if (length(v_def) - length(replace(v_def, r.old_text, ''))) / length(r.old_text) <> 1 then
@@ -657,8 +660,9 @@ begin
   then
     raise exception 'A new function is not a pinned security definer function.';
   end if;
-  if (select count(*) from pg_proc where oid in ('public.save_order_draft(jsonb)'::regprocedure, 'public.save_quote_draft(jsonb)'::regprocedure)
-        and prosrc like '%private.sales_money_ok()%' and prosecdef and coalesce(proconfig, '{}') @> array['search_path=""']) <> 2 then
+  if (select count(*) from pg_proc where oid in ('public.save_order_draft(jsonb)'::regprocedure, 'public.save_quote_draft(jsonb)'::regprocedure,
+                                                'private.operational_exceptions_all(uuid)'::regprocedure)
+        and prosrc like '%private.sales_money_ok()%' and prosecdef and coalesce(proconfig, '{}') @> array['search_path=""']) <> 3 then
     raise exception 'save_order_draft and save_quote_draft do not narrow their answer as intended.';
   end if;
 end;

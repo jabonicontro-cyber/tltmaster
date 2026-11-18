@@ -62,6 +62,13 @@ describe("order and quote totals (SEC7)", () => {
       expect(Number(history.orders)).toBeGreaterThan(0);
       const bases = (await s.query<{ b: Array<{ ordered_cents: unknown; orders: number }> }>("select public.dispatch_base_summary($1, $2) as b", [addDays(today, -1), today])).rows[0].b;
       for (const b of bases) expect(b.ordered_cents).toBeNull();
+      // The Command Center's "needs a delivery date" item carries no total for them either.
+      await s.query("select public.set_order_status($1, 'confirmed', '')", [mine]);
+      const cc = async () => ((await s.query<{ r: { items: Array<{ order_id: string; details: Record<string, unknown> }> } }>(
+        "select public.command_center_exceptions('order_unscheduled', false, 200, 0, false) as r")).rows[0].r.items ?? []).find((i) => i.order_id === mine);
+      const item = await cc();
+      expect(item).toBeTruthy();
+      expect(item!.details.total_cents ?? null).toBeNull();
 
       // The office and the owner: totals through the functions and the views (never straight from the table).
       for (const [who, label] of [[office, "office"], [owner, "owner"]] as const) {
@@ -77,6 +84,7 @@ describe("order and quote totals (SEC7)", () => {
         expect((await s.query("select 1 from public.audit_events where entity_id = $1 and action = 'order.created'", [mine])).rowCount, label).toBe(1);
         const h = (await s.query<{ h: { ordered_cents_365d: unknown } }>("select public.customer_history($1) as h", [ids.customerId])).rows[0].h;
         expect(h.ordered_cents_365d, label).not.toBeNull();
+        if (who === owner) expect(Number((await cc())?.details.total_cents), label).toBeGreaterThan(0);
       }
       // An order of the office's: saving answers with the total for them.
       const officeOrder = await scheduledOrder(s, office, today);

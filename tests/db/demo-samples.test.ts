@@ -180,8 +180,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     const linkedOrders = await q<{ n: string }>(
       "select count(*) n from public.orders o join public.customer_sites cs on cs.id = o.site_id where o.company_id = $1 and coalesce(cs.directions, '') <> ''", [w.company]);
     expect(Number(linkedOrders.rows[0].n)).toBeGreaterThan(0);
-    // Quotes show an issued, locked version: one quote marked handed over outside Taviron (nothing sent).
-    const sent = await q<{ n: string }>("select count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and q.status = 'sent' and v.sent_at is not null", [w.company]);
+    // Quotes show an issued, locked version: one quote marked handed over outside Taviron (nothing sent); the quote waiting
+    // for its PO (BL1, checked below) is counted apart.
+    const sent = await q<{ n: string }>("select count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and q.status = 'sent' and v.sent_at is not null and v.project_name <> 'PO needed on acceptance (demo)'", [w.company]);
     expect(Number(sent.rows[0].n)).toBe(1);
     const delivered = await q<{ n: string }>("select count(*) n from public.email_deliveries d join public.quotes q on q.id = d.quote_id where q.company_id = $1 and d.channel <> 'manual'", [w.company]);
     expect(Number(delivered.rows[0].n)).toBe(0); // no email was recorded as sent
@@ -205,6 +206,14 @@ describe.skipIf(!available)("demo feature samples", () => {
     // follow-up; all on real demo customers.
     const opps = await q<{ stage: string; valued: boolean }>("select stage, value_cents is not null valued from public.crm_opportunities where company_id = $1 order by stage", [w.company]);
     expect(opps.rows).toEqual([{ stage: "negotiation", valued: false }, { stage: "quoting", valued: true }]);
+    // Mistake on my ticket (TM1, 20261120024720): one open report on a demo driver's ticket, in the office's review.
+    const mistakes = await q<{ n: string }>("select count(*) n from public.ticket_mistake_reports where company_id = $1 and status = 'open'", [w.company]);
+    expect(Number(mistakes.rows[0].n)).toBe(1);
+    // PO on acceptance (BL1): a sent quote without a PO for a customer marked PO required, when the demo has one.
+    const poCustomers = Number((await q<{ n: string }>("select count(*) n from public.customers where company_id = $1 and po_required and active", [w.company])).rows[0].n);
+    const poQuotes = await q<{ customer_po: string; status: string }>(
+      "select v.customer_po, q.status from public.quote_versions v join public.quotes q on q.id = v.quote_id where v.company_id = $1 and v.project_name = 'PO needed on acceptance (demo)'", [w.company]);
+    expect(poQuotes.rows).toEqual(poCustomers ? [{ customer_po: "", status: "sent" }] : []);
     const overdue = await q<{ n: string }>("select count(*) n from public.customer_tasks where company_id = $1 and status = 'open' and due_on < current_date", [w.company]);
     expect(Number(overdue.rows[0].n)).toBe(1);
     // Customer portal (20261120000700): three published sample help articles. The entitlement is the platform owner's

@@ -888,6 +888,7 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
             <CardHeader title="Totals" />
             <CardBody>
               <p className="text-sm text-muted" data-testid="editor-totals-hidden">The office sees the order totals. Check the price per unit on each line.</p>
+              {taxLocked && <p className="mt-2 text-sm text-muted">Sales tax follows the customer and the company setting.</p>}
             </CardBody>
           </Card>
         ) : (
