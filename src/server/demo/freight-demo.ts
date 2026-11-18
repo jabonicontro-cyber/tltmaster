@@ -7,6 +7,7 @@ import { ensureDemoLocations } from "./locations";
 import { seedCommunicationSamples } from "./prairie-lantern";
 import { ensureFeatureSamples } from "./samples";
 import { savePeople } from "./people";
+import { duplicateNotes, removeDuplicateSamples } from "./duplicates";
 
 /**
  * "Cobalt Plains Freight" (MK3, owner 2026-11-05: a separate freight demo company beside the aggregate demos): a
@@ -190,6 +191,8 @@ export async function refreshFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZon
   await requireDemo(db);
   const today = todayIn(timeZone);
   let added = 0;
+  // Exact copies of sample customers and people (DP2): removed first, keeping the older row (see ./duplicates).
+  const duplicates = await removeDuplicateSamples(db, { customers: FREIGHT_CUSTOMERS.map((c) => c.name), people: [...FREIGHT_STAFF.map((s) => s.full_name), ...FREIGHT_DRIVERS] });
 
   const existingCustomers = (await must("customers", db.from("customers").select("id, name"))) as Array<{ id: string; name: string }>;
   const cust = new Map(existingCustomers.map((c) => [c.name, c.id]));
@@ -354,5 +357,5 @@ export async function refreshFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZon
   // Every released feature's samples the demo does not have yet (shared with every demo).
   const samples = await ensureFeatureSamples(db, today);
   added += samples.added;
-  return { added, loads, notes: samples.notes };
+  return { added, loads, notes: [...duplicateNotes(duplicates), ...(samples.notes ?? [])] };
 }

@@ -333,6 +333,13 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // SEC5 (20261120019800): fuel_purchase_amounts needs billing.view, require_company(), and only receipts the person
   // reads anyway (fleet.view / accounting.view, or a driver's own); no company id argument.
   "public.fuel_purchase_amounts",
+  // EX1 (20261120024500): the data download. Every function starts with private.data_export_company(): require_company(),
+  // an active owner membership there, aal2, billing.view, never a support visit; rows only where company_id = that
+  // company, tables only from the fixed list (private.data_export_tables); no company id argument.
+  "public.data_export_record", "public.data_export_summary", "public.data_export_rows", "public.data_export_files",
+  // DP2 (20261120024510): finds duplicate sample rows only; demo_owner_company() (refused for a real company); reads
+  // only that company's customers, sites and people; changes nothing.
+  "public.demo_duplicate_samples",
   "private.qualification_check", "private.member_summary", "public.set_equipment_service_status", "public.check_assignment_eligibility",
   "private.assignment_eligibility", "private.local_time_label", "private.resource_conflict", "private.check_assignment",
   "private.assignment_label", "private.release_order_assignments",
@@ -412,6 +419,10 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Tickets without Dispatch (MOD1, 20261120023100).
   "public.submit_ticket_without_dispatch", "public.create_ticket_job", "private.prepare_ticket_without_dispatch",
   "private.refuse_assignment_on_ticket_load", "private.check_ticket_dispatch", "private.ticket_load_on_void", "private.ticket_load_follow",
+  // 20261120024600-024630 (WK3): a stop added to an assigned load tells its driver (trigger only; the inserted stops'
+  // own company and order, the drivers on that company's active assignments). Demo samples (realistic repair history,
+  // a job scheduled before its part arrives): demo owner only.
+  "private.alerts_from_new_stops", "public.demo_repair_history", "public.demo_part_arrival_sample",
 ];
 
 /**

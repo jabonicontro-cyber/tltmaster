@@ -69,6 +69,7 @@ const ALLOWED = new Set([
   "src/app/(app)/dispatch/page.tsx",
   // End-of-day summary (B97): demos never send it; Settings shows the figures without the switch.
   "src/app/(app)/settings/page.tsx",
+  "src/app/portal/actions.ts", // PR1: a demo portal sends no password reset email
 ]);
 
 function files(dir: string): string[] {

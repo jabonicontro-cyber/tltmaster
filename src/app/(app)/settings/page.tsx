@@ -41,6 +41,7 @@ import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
 import { approvalChain } from "@/server/data/time-off";
 import { BasesPanel } from "@/components/settings/bases-panel";
 import { CompanyMfaPolicyForm } from "@/components/security/company-mfa-policy";
+import { DataExportIcon, DataExportPanel } from "@/components/settings/data-export";
 import { MfaSetUp, MfaWho } from "@/components/security/mfa-who";
 import { memberMfaStatuses, moneyRoles } from "@/lib/mfa-policy";
 import { baseAllowance, baseMembers, baseSummary, listBases } from "@/server/data/bases";
@@ -112,7 +113,10 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
   { key: "import", label: "Import", group: "System", visible: (a) => can(a, "settings.manage") },
   { key: "audit", label: "Audit log", group: "System", visible: (a) => can(a, "audit.view") },
+  // Download all your data (EX1, owner 2026-11-17): the owner only, never a support visit or another role's preview.
+  { key: "export", label: "Download your data", group: "System", visible: (a) => a.role === "owner" && !a.support },
 ];
+TAB_ICONS.export = DataExportIcon;
 const GROUPS: Group[] = ["Company", "Operations", "Access", "System"];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string; saved?: string; error?: string }> }) {
@@ -526,6 +530,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         )}
       </>
     );
+  } else if (tab === "export") {
+    content = <DataExportPanel demo={Boolean(access.isDemo)} />;
   } else if (tab === "audit") {
     const [{ data }, names] = await Promise.all([
       supabase.from("audit_events").select("*").order("occurred_at", { ascending: false }).limit(200),

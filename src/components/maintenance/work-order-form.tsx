@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
+import { formatDate } from "@/lib/dates";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Checkbox, Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
@@ -44,8 +46,10 @@ interface Options {
  * safety-critical takes that unit out of service until an authorized
  * inspection clears it (the form says so before saving).
  */
-export function WorkOrderForm({ mode, initial, options, action, cancelHref, laborFromTime = false, suggestion = null }: {
+export function WorkOrderForm({ mode, initial, options, action, cancelHref, laborFromTime = false, suggestion = null, partsExpected = null }: {
   mode: "create" | "edit";
+  /** The last part still on order and the day it is expected (WK3): a date before it gets a warning (saving is allowed). */
+  partsExpected?: { on: string; part: string } | null;
   /**
    * Category, urgency and the safety flag were pre-filled as a suggestion (from a driver report): the form says so and
    * why, and the person changes anything that is wrong before creating the work order.
@@ -67,6 +71,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref, labo
   const [trailerId, setTrailerId] = useState(initial.trailer_id ?? "");
   const [driverId, setDriverId] = useState(initial.driver_id);
   const [safety, setSafety] = useState(initial.safety_critical);
+  const [scheduledFor, setScheduledFor] = useState(initial.scheduled_for);
   const { pending, onSubmit, fieldError, formError } = useFormAction(action, {
     onSuccess: (r) => {
       toast.success(r.message ?? "Saved.");
@@ -163,8 +168,14 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref, labo
           </Select>
         </Field>
         <Field label="Scheduled for" htmlFor="scheduled_for" error={fieldError("scheduled_for")} className="sm:col-span-2" hint={equipment === "trailer" ? "The driver whose truck usually pulls this trailer sees it on My Day." : "The driver of this truck sees it on My Day."}>
-          <DateInput {...f("scheduled_for")} defaultValue={initial.scheduled_for} />
+          <DateInput {...f("scheduled_for")} defaultValue={initial.scheduled_for} onChange={(e) => setScheduledFor(e.target.value)} />
         </Field>
+        {partsExpected && scheduledFor && scheduledFor < partsExpected.on && (
+          <p className="flex items-start gap-1.5 text-sm text-amber-800 sm:col-span-2" role="status" data-testid="part-arrival-warning">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
+            <span>{partsExpected.part} is expected {formatDate(partsExpected.on)}, after this date. You can still save it if the part will be in sooner.</span>
+          </p>
+        )}
         <Field label="Due by" htmlFor="due_on" error={fieldError("due_on")} className="sm:col-span-2">
           <DateInput {...f("due_on")} defaultValue={initial.due_on} />
         </Field>

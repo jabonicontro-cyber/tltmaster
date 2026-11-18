@@ -34,7 +34,7 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
 | --- | --- |
 | Assignments, schedule, load instructions | Working (My Day: today, earlier, later; instructions, directions, site contact) |
 | Whether the site's directions were checked (B51) | Working once `20261115000200` is applied: "Not checked by the office yet" / "Last checked by the office …" under the directions; unverified safety or access directions, and overdue ones, show a red line on the load ("Confirm them with dispatch before relying on them"). The phone never shows who checked them |
-| Dispatch updates (new load, changed date/time) | Working: in-app notices on My Day with **Got it** (20261114000500 triggers; Communications notifications) |
+| Dispatch updates (new load, changed date/time, truck changed, stop added) | Working: in-app notices on My Day with **Got it** (20261114000500 and 20261120011400 triggers; Communications notifications). A stop added to the order of a load already assigned to the driver (from today on) is one notice per save, "Stop added: …" or "2 stops added: …", with the new stops named under it (20261120024600, owner 2026-11-16/17); no texts |
 | Acknowledgments | **Got it** marks the notice read on that account. It is *not* proof the driver read or understood it, and the screen says dispatch still confirms what matters |
 | Photos and digital tickets | Working (existing ticket form with photos; paper tickets supported) |
 | Proof of delivery at a stop (MK2) | Working once `20261120020800` is applied: each delivery stop of the driver's own load (today or the two days before) has Add proof of delivery (camera, or a photo or PDF file); the office sees it on the order and its billing page. Needs signal (section 4) |

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { isOperationalDate } from "@/lib/dates";
+import { formatDate, isOperationalDate } from "@/lib/dates";
 import { partWaitSchema } from "@/lib/maintenance/parts-waiting";
 import { uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
@@ -11,6 +11,7 @@ import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "@/server/data/settings";
 import { startJob } from "./crew-actions";
+import { partArrivalConflict } from "@/lib/maintenance/part-arrival";
 
 // Parts on order (20261120012300). Each action checks maintenance.manage here and calls one database function that
 // checks the permission, the company and the work order again. Stock and costs change only through the parts ledger
@@ -230,5 +231,40 @@ export async function partsIn(input: z.input<typeof partsInInput>): Promise<Acti
     refresh(id);
     if (error) return fail(`${got}${dbErrorMessage(error)}`);
     return ok(undefined, `${got}The job is back in the shop queue.`);
+  });
+}
+
+const moveInput = z.object({ workOrderId: uuid, from: z.string(), to: z.string() }).strict();
+
+/**
+ * "Move to <arrival date>" (owner 2026-11-16/17, WK3): a job scheduled before a part it waits for is expected moves to
+ * the day the part is expected, only when a person asks. Right before moving, the rule is checked again on the current
+ * records (the job still has the date the person saw, still waits for a part expected on the date offered); otherwise
+ * nothing changes and the person is told why. maintenance.manage here and in maintenance_update_work_order, which also
+ * refuses a past date, records the change in the job's history ("rescheduled") and keeps everything else.
+ */
+export async function moveJobToPartArrival(input: z.input<typeof moveInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("maintenance.manage");
+    const p = moveInput.safeParse(input);
+    if (!p.success || !isOperationalDate(p.data.from) || !isOperationalDate(p.data.to)) return fail("Invalid request.");
+    const supabase = await createClient();
+    const { data: wo, error } = await supabase.from("work_orders").select("id, number, status, scheduled_for, edit_seq").eq("id", p.data.workOrderId).maybeSingle();
+    if (error) return fail(dbErrorMessage(error));
+    const job = wo as { id: string; number: string; status: string; scheduled_for: string | null; edit_seq: number } | null;
+    if (!job) return fail("Work order not found.");
+    if (job.scheduled_for !== p.data.from) return fail(`${job.number} was rescheduled meanwhile${job.scheduled_for ? ` (now ${formatDate(job.scheduled_for)})` : ""}. Nothing was moved.`);
+    const parts = await supabase.from("work_order_part_waits").select("work_order_id, description, expected_on, status").eq("work_order_id", job.id).eq("status", "waiting");
+    if (parts.error) return fail(dbErrorMessage(parts.error));
+    const { today } = await businessToday();
+    const conflict = partArrivalConflict(job, (parts.data ?? []) as Array<{ work_order_id: string; description: string; expected_on: string | null; status: string }>, today);
+    if (!conflict?.moveTo) return fail(`${job.number} no longer waits for a part expected after ${formatDate(job.scheduled_for)}. Nothing was moved.`);
+    if (conflict.moveTo !== p.data.to) return fail(`The part's expected date changed: it is now ${formatDate(conflict.moveTo)}. Nothing was moved; check and try again.`);
+    const { error: moveError } = await supabase.rpc("maintenance_update_work_order", { p_id: job.id, p_expected_seq: job.edit_seq, p: { scheduled_for: conflict.moveTo } });
+    if (moveError) return fail(dbErrorMessage(moveError));
+    refresh(job.id);
+    revalidatePath("/maintenance/shop");
+    revalidatePath("/maintenance/my-jobs");
+    return ok(undefined, `${job.number} moved to ${formatDate(conflict.moveTo)}, when its part is expected.`);
   });
 }

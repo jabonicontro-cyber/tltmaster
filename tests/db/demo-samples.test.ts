@@ -9,7 +9,8 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { planningSpeed, reviewPace, billingReadySpeed } from "@/lib/command-center/speed";
 import { todayIn } from "@/lib/dates";
-import { seedPrairieLantern } from "@/server/demo/prairie-lantern";
+import { CUSTOMERS as PL_CUSTOMERS, DRIVERS as PL_DRIVERS, STAFF as PL_STAFF, seedPrairieLantern } from "@/server/demo/prairie-lantern";
+import { removeDuplicateSamples } from "@/server/demo/duplicates";
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
 import { DEMO_CREDIT_REASON, demoAssign } from "@/server/demo/assign";
 import { DEMO_CREDIT_LIMIT_CENTS, ensureFeatureSamples, OWN_DRAFT_PROJECT, PORTAL_NOT_OPENED, PRICE_CHECK_PROJECT } from "@/server/demo/samples";
@@ -68,6 +69,33 @@ async function counts(company: string) {
     handoffs: await one("select count(*) n from public.billing_handoffs where company_id = $1"),
     memberships: (await q<{ user_id: string; role: string; active: boolean }>("select user_id, role, active from public.company_memberships where company_id = $1 order by user_id", [company])).rows,
   };
+}
+
+/** A copy of one row (stored columns only), with some values replaced by SQL expressions over the original `o`. */
+async function copyRow(table: string, where: string, params: unknown[], set: Record<string, string>): Promise<string[]> {
+  const cols = (await q<{ attname: string }>(
+    "select attname from pg_attribute where attrelid = $1::regclass and attnum > 0 and not attisdropped and attgenerated = '' order by attnum", [`public.${table}`])).rows.map((r) => r.attname);
+  const exprs = cols.map((c) => (c in set ? set[c] : `o.${c}`));
+  return (await q<{ id: string }>(`insert into public.${table} (${cols.join(", ")}) select ${exprs.join(", ")} from public.${table} o where ${where} returning id`, params)).rows.map((r) => r.id);
+}
+
+/**
+ * Exact copies, made a few seconds after the originals (as the first-fill race did): a customer with copies of its job
+ * sites, a second customer, and a person. Returns the ids of the copies and of the originals.
+ */
+async function duplicate(company: string, plain: string, used: string, person: string) {
+  const later = "o.created_at + interval '3 seconds'";
+  const copyCustomer = async (name: string) => {
+    const original = (await q<{ id: string }>("select id from public.customers where company_id = $1 and name = $2 order by created_at, id limit 1", [company, name])).rows[0].id;
+    const [copy] = await copyRow("customers", "o.id = $1", [original], { id: "gen_random_uuid()", customer_number: "o.customer_number || '-copy'", created_at: later });
+    const sites = await copyRow("customer_sites", "o.customer_id = $1", [original, copy], { id: "gen_random_uuid()", customer_id: "$2::uuid", created_at: later });
+    return { original, copy, sites };
+  };
+  const a = await copyCustomer(plain);
+  const b = await copyCustomer(used);
+  const personOriginal = (await q<{ id: string }>("select id from public.employees where company_id = $1 and full_name = $2 order by created_at, id limit 1", [company, person])).rows[0].id;
+  await copyRow("employees", "o.id = $1", [personOriginal], { id: "gen_random_uuid()", created_at: later });
+  return { plainOriginal: a.original, sites: a.sites, usedOriginal: b.original, used: b.copy, personOriginal };
 }
 
 describe.skipIf(!available)("demo feature samples", () => {
@@ -547,6 +575,20 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(stops.rows).toHaveLength(1);
     expect(stops.rows[0].kinds[0]).toBe("pickup");
     expect(stops.rows[0].kinds.slice(1).every((k) => k === "delivery") && stops.rows[0].kinds.length >= 2).toBe(true);
+    // WK3 (owner 2026-11-16/17): a job scheduled before its part arrives, added once; and with the sample repairs spread
+    // over months, only one or two demo trucks read At risk (same rule as src/lib/fleet/health.ts, default 3).
+    const arrival = await q<{ n: string }>("select count(*) n from public.work_orders where company_id = $1 and title = 'Replace wiper motor (demo)' and status = 'scheduled'", [w.company]);
+    expect(Number(arrival.rows[0].n)).toBe(1);
+    const atRisk = await q<{ unit_number: string }>(
+      `select t.unit_number from public.trucks t
+        where t.company_id = $1 and t.active and t.hauler_id is null
+          and (t.service_status = 'out_of_service'
+               or exists (select 1 from public.work_orders w where w.truck_id = t.id and w.status in ('reported', 'triaged', 'scheduled', 'in_progress', 'awaiting_parts', 'awaiting_inspection') and (w.safety_critical or w.restricted_truck))
+               or (select count(*) from public.work_orders w where w.truck_id = t.id and w.created_at >= ($2::date - 90)::timestamptz and w.status <> 'canceled'
+                     and w.category not in ('preventive', 'inspection') and w.source <> 'preventive')
+                  >= (select (s.truck_health_rules ->> 'at_risk_repairs')::int from public.company_settings s where s.company_id = $1))`, [w.company, todayIn(TZ)]);
+    expect(atRisk.rows.length).toBeGreaterThanOrEqual(1);
+    expect(atRisk.rows.length).toBeLessThanOrEqual(2);
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
     expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
     const decidedAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%'", [w.company]);
@@ -765,6 +807,47 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect((await ensureFeatureSamples(as(prospect), todayIn(TZ))).features).not.toContain("own draft order");
     await q("update public.company_memberships set active = false where company_id = $1 and user_id = $2", [w.company, prospect]);
   }, 180_000);
+
+  it("removes exact duplicate sample customers and people in a demo, keeping the older row; a copy with records stays; a repeat removes nothing", async () => {
+    const admin = createClient(URL_, env.DEV_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const [plain, used] = [PL_CUSTOMERS[0].name, PL_CUSTOMERS[1].name];
+    const person = PL_STAFF[0].full_name;
+    const copies = await duplicate(w.company, plain, used, person);
+    // The copy of the second customer has a contact of its own: it is left as it is (nothing is merged).
+    await q("insert into public.customer_contacts (company_id, customer_id, name, email) values ($1, $2, 'Copy Contact', 'copy@contact.example')", [w.company, copies.used]);
+    const names = { customers: PL_CUSTOMERS.map((c) => c.name), people: [...PL_STAFF.map((s) => s.full_name), ...PL_DRIVERS] };
+
+    const r = await removeDuplicateSamples(as(w.owner), names, admin);
+    expect(r.removed).toBe(2);
+    expect(r.kept).toEqual([{ kind: "customer", name: used, id: copies.used }]);
+    const left = async (table: string, col: string, name: string) =>
+      (await q<{ id: string }>(`select id from public.${table} where company_id = $1 and ${col} = $2 order by created_at, id`, [w.company, name])).rows.map((x) => x.id);
+    expect(await left("customers", "name", plain)).toEqual([copies.plainOriginal]);
+    expect(await left("employees", "full_name", person)).toEqual([copies.personOriginal]);
+    expect(await left("customers", "name", used)).toEqual([copies.usedOriginal, copies.used]);
+    // The copy's own job site went with it; the older customer keeps its sites.
+    expect(Number((await q<{ n: string }>("select count(*) n from public.customer_sites where id = any($1)", [copies.sites])).rows[0].n)).toBe(0);
+    expect(Number((await q<{ n: string }>("select count(*) n from public.customer_sites where customer_id = $1", [copies.plainOriginal])).rows[0].n)).toBeGreaterThan(0);
+
+    // Idempotent: nothing more to remove; the copy with records is still reported, still kept.
+    const again = await removeDuplicateSamples(as(w.owner), names, admin);
+    expect(again.removed).toBe(0);
+    expect(await left("customers", "name", used)).toEqual([copies.usedOriginal, copies.used]);
+    // Refresh demo data runs the same step without failing.
+    await refreshPrairieLantern(as(w.owner), TZ);
+    expect(await left("employees", "full_name", person)).toEqual([copies.personOriginal]);
+
+    // A real company: refused by the database, its rows untouched (even an exact copy).
+    const real = (await q<{ name: string }>("select name from public.customers where company_id = $1 order by created_at limit 1", [TOP_LINE])).rows[0].name;
+    const [realCopy] = await copyRow("customers", "o.company_id = $1 and o.name = $2 and o.id = (select id from public.customers where company_id = $1 and name = $2 order by created_at limit 1)", [TOP_LINE, real],
+      { id: "gen_random_uuid()", customer_number: "o.customer_number || '-copy'", created_at: "o.created_at + interval '3 seconds'" });
+    try {
+      await expect(removeDuplicateSamples(as(w.realOwner), { customers: [real], people: [] }, admin)).rejects.toThrow(/Only the owner of a demo company/);
+      expect((await q("select 1 from public.customers where id = $1", [realCopy])).rowCount).toBe(1);
+    } finally {
+      await q("delete from public.customers where id = $1", [realCopy]);
+    }
+  }, 120_000);
 
   it("is refused for a real company, which is left untouched", async () => {
     const before = await counts(TOP_LINE);

@@ -11,7 +11,7 @@ import { safeNextPath } from "@/lib/safe-redirect";
 import { signInHome } from "@/lib/companion";
 import { isUsernameEmail, signInAddress } from "@/lib/usernames";
 import type { ActionResult } from "@/lib/action-result";
-import { takePendingPortalInvite } from "@/server/portal-invite";
+import { takePendingPortalInvite, takePortalReturn } from "@/server/portal-invite";
 import { EARLY_ACCESS_REQUIRED, hasSiteAccess } from "@/server/site-access-request";
 
 const signInSchema = z.object({
@@ -131,6 +131,7 @@ export async function updatePassword(formData: FormData): Promise<ActionResult> 
   if (error) {
     return { ok: false, error: error.message.includes("different") ? "Choose a password you have not used before." : "Password could not be updated. Try again." };
   }
-  // A new customer-portal contact continues to the invitation they opened in this browser.
-  redirect((await takePendingPortalInvite()) ?? "/command-center");
+  // A new customer-portal contact continues to the invitation they opened in this browser; a customer who asked for the
+  // reset on a portal's sign-in page goes back to that portal (PR1).
+  redirect((await takePendingPortalInvite()) ?? (await takePortalReturn()) ?? "/command-center");
 }

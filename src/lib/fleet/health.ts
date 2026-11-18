@@ -13,7 +13,8 @@ export interface HealthRules {
   service_overdue: "watch" | "at_risk" | "off";
 }
 
-export const DEFAULT_HEALTH_RULES: HealthRules = { at_risk_repairs: 2, watch_repairs: 1, watch_open: 2, service_overdue: "watch" };
+// At risk from 3 unplanned repairs (owner 2026-11-16/17, WK3; was 2 until 20261120024610). Watch stays at 1.
+export const DEFAULT_HEALTH_RULES: HealthRules = { at_risk_repairs: 3, watch_repairs: 1, watch_open: 2, service_overdue: "watch" };
 
 export const REPAIR_WINDOW_DAYS = 90;
 

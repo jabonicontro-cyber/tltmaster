@@ -26,7 +26,7 @@ import { getOrderDetail, getOrderDocuments, getOrderJobType, getOrderPickup, get
 import { OrderDocuments } from "@/components/orders/order-documents";
 import { getUserNames } from "@/server/data/quotes";
 import { OrderJobType } from "@/components/orders/order-job-type";
-import { OrderStops } from "@/components/orders/order-stops";
+import { OrderStopsPanel } from "@/components/orders/order-stops-panel";
 import { haulsAggregate, industryOf } from "@/lib/industry";
 import { stopsSummary } from "@/lib/orders/stops";
 import { OrderPickup } from "@/components/orders/order-pickup";
@@ -274,7 +274,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
           {showStops && (
             <Card>
               <CardHeader title="Stops" description={stops.stops.length ? `${stopsSummary(stops.stops)}, in the order the truck makes them.` : "Pickups and deliveries, with appointment times and reference numbers."} />
-              <OrderStops orderId={id} stops={stops.stops} canEdit={urgencyAndStops && orderOpen} />
+              <OrderStopsPanel orderId={id} stops={stops.stops} canEdit={urgencyAndStops && orderOpen} order={order} industry={companySettings?.industry} access={access} />
             </Card>
           )}
 

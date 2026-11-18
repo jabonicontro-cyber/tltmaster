@@ -7,6 +7,52 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 000000000000000000000000000000. 2026-11-14 to 11-17 — finish everything Claude can do; owner decisions (question by question)
+
+- **Owner 2026-11-14:** "ensure everything you can have done without me is complete. I want the site finished from your
+  end with only remaining things from me." Inventory, five first-day walkthroughs (owner, office, dispatcher,
+  driver+mechanic, portal+website), builders and fix batches followed; all merged on the development branch except MOD1
+  (being integrated on `mod1-integrated`).
+- **Owner answers 2026-11-14 to 11-17 (all the recommended option unless noted):**
+  - Address for Top Line from Dec 1: **www.mytaviron.com** (Supabase Site URL and redirect URLs; passkeys RP ID later).
+  - Owner invites from the console: **yes, Admin only** (built PC2; security fixes: email code when not emailed, first
+    owner only, 72 hours, token cookie).
+  - Revenue over time: **yes, Admin only, "agreed, not collected"** (built PC2).
+  - Publish the 10 built features once their screenshots pass the gate: **yes** (captures pending: needs a plain-named
+    demo capture account, local only).
+  - Starter companies: **extras hidden, Maintenance shown** (built SF1, now part of MOD1).
+  - WK3: warn and offer to move a shop job scheduled before its part arrives: **yes**; warn (allow saving) when a stop is
+    outside the load window: **yes**; tell the driver in the app when a stop is added: **yes**; saved-places picker for
+    stops with typing fallback: **yes**; "At risk": **default 3 unplanned repairs in 90 days** (Watch stays 1; safety
+    defects and out of service always At risk; companies that changed it keep theirs) **and realistic demo repairs**.
+  - **MOD1 workflow modules (2026-11-16, owner's idea):** modules + presets; tickets without Dispatch against a customer
+    job (truck/driver optional); quotes only = won, no order; prices unchanged; owner changes modules, Taviron picks the
+    starting setup, nothing deleted. Details: Maintenance on in every preset; Payroll off in Tickets to billing (owner
+    turns it on); a job created from the ticket screen asks its expected quantity pre-filled from the ticket; a ticket
+    without a time shows the date and "time not entered".
+  - Dispatchers without billing/pricing access: **hide order totals, revenue estimates and invoice amounts; keep the
+    per-unit rates they type** (server and database; security review).
+  - Driver ticket mistakes: **"Mistake on my ticket" report to the office's ticket review**; the paper number shows after
+    sending; the driver cannot edit the ticket.
+  - Invoicing for new companies: **ask "Who sends your invoices: Taviron or QuickBooks?" in Getting started**; until
+    answered, billing shows that question; one Save per card on Settings → Invoicing.
+  - Customer portal: **self-service password reset for email-invited accounts**; username accounts keep "ask the
+    company" with the reason shown.
+  - Pricing page dispatch bases: **publish multiple bases with the other nine**; until then pricing says "multiple bases:
+    ask us".
+  - What's new: **add entries for released, published features** since Oct 28.
+  - Billing vs Order to Cash: **Billing = the office's work list; Order to Cash = a read-only overview linked from it.**
+  - Demo duplicates (Prairie Lantern): **clean up, demo companies only, keep the older row** (during Refresh).
+  - Billing safeguards: **ask for the PO when accepting a quote for a "PO required" customer; flag invoices overdue but
+    never sent** (warnings only).
+  - Data export promise: **build an owner-only "Download all your data"** (zip of spreadsheets plus ticket photos,
+    two-step, recorded).
+  - Mechanics closing jobs: already decided 2026-11-12 (keep).
+- **Found and fixed:** the local database rebuild wiped the demos (recreated); a quote acceptance always created an
+  order (MOD1 respects Orders off); request bodies over ~4.5 MB fail on Vercel (photos resized, 4 MB limits).
+- **Owner steps added:** the hosted Supabase "Confirm signup" email template must show the code `{{ .Token }}`
+  (DEPLOYMENT §1.7); test one real iPhone and one Android home-screen icon before driver rollout (Nov 24–28).
+
 ## 00000000000000000000000000000. 2026-11-12 — owner decisions (question by question) and the next release
 
 - **Production = `0c22b47`** (fast-forward from `00e08e5`, owner approval 2026-11-12): full CI green on the Preview
