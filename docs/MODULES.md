@@ -138,7 +138,7 @@ Today every ticket needs an order, a load, an assignment, a truck and a driver (
 | Rule | Where |
 | --- | --- |
 | Only known modules, dependencies kept, own company, `settings.manage` | Database (`set_company_modules`, check constraint, `private.modules_check` trigger) |
-| Admin preset only before go-live (or for demos); Admin level only | Database (`platform_set_company_modules`) |
+| Admin preset only before go-live (or for demos), never for a company that existed when the rule was installed (Top Line and existing customers: `private.established_companies`, 20261120024640); Admin level only | Database (`platform_set_company_modules`) |
 | Every change audited | Database (audit log, platform activity) |
 | Ticket without a load assignment only while Dispatch is off; never on a dispatched load; ticket loads never assigned | Database |
 | No order from a quote while Orders is off | Database (`convert_quote_to_order`, the acceptance trigger) |

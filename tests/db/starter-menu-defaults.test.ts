@@ -1,5 +1,6 @@
 // Simple mode for new Starter companies (owner decision 2026-11-14, master plan SF1; migration 20261120022200): a new
-// company whose first plan is Starter starts with the optional areas hidden except Maintenance; existing companies,
+// company whose first plan is Starter starts with the optional areas hidden except Maintenance; existing companies
+// (created before the decision, or already there when the rule was installed: 20261120024640, Top Line included),
 // companies on other plans, a later plan change and an owner's own menu are never changed.
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
@@ -103,10 +104,23 @@ describe("Starter companies start with the essentials in the menu", () => {
       expect((await pgError(s.query("select public.platform_lifecycle_terms($1, $2::jsonb)", [demo, terms(starter)]))).code).toBe("P0002");
       expect(await hidden(s, demo)).toEqual([]);
 
-      // Top Line was created before the decision, so the rule can never reach it.
+      // A company that already existed when the rule was installed (20261120024640): unchanged, whatever its creation
+      // date. On a database built from the migrations (CI) every company, Top Line included, is created that day.
+      const known = await s.createCompany(`Known Haul ${randomUUID().slice(0, 6)} (test)`);
+      await s.query("insert into private.established_companies (company_id) values ($1)", [known]);
+      await s.as(admin);
+      await s.query("select public.platform_lifecycle_terms($1, $2::jsonb)", [known, terms(starter)]);
+      expect(await hidden(s, known)).toEqual([]);
+
+      // Top Line is one of them, so the rule can never reach it, on a fresh database as on the hosted ones.
       await s.asAdmin();
-      const tl = (await s.query<{ old: boolean }>("select created_at < timestamptz '2026-11-14 00:00:00+00' old from public.companies where id = $1", [TOP_LINE])).rows[0];
-      expect(tl.old).toBe(true);
+      expect((await s.query("select 1 from private.established_companies where company_id = $1", [TOP_LINE])).rowCount).toBe(1);
+      const tlBefore = await s.query<{ m: string[]; h: string[] }>("select modules_off m, hidden_areas h from public.company_settings where company_id = $1", [TOP_LINE]);
+      await s.as(admin);
+      await s.query("select public.platform_lifecycle_terms($1, $2::jsonb)", [TOP_LINE, terms(starter)]);
+      await s.asAdmin();
+      expect((await s.query<{ m: string[]; h: string[] }>("select modules_off m, hidden_areas h from public.company_settings where company_id = $1", [TOP_LINE])).rows).toEqual(tlBefore.rows);
+      expect((await s.query("select 1 from private.platform_audit where action = 'starter_menu_defaults' and target_id = $1", [TOP_LINE])).rowCount).toBe(0);
     });
   });
 });

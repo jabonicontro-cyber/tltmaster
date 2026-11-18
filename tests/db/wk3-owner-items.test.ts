@@ -225,6 +225,44 @@ describe("demo repair history", () => {
       expect(j.worked! <= j.completed && j.worked! >= addDays(t, -365)).toBe(true);
     });
   });
+
+  it("never lands on time the same person recorded in another company (a second demo made the same day)", async () => {
+    await withSession(async (s) => {
+      // The same Taviron team member owns two demos; each has the same sample history at the same times. The other demo's
+      // history already went back to the first day the move picks (as the first demo's run puts it).
+      const { company, owner, trucks } = await shop(s, 2);
+      const ids: string[] = [];
+      for (const t of [0, 0, 0, 1]) {
+        const id = await createWo(s, { truck_id: trucks[t], title: "Replace brake shoes", category: "brakes", description: MARK });
+        await s.query("select public.maintenance_set_status($1, 'in_progress', '')", [id]);
+        await s.query("select public.maintenance_set_status($1, 'completed', '')", [id]);
+        ids.push(id);
+      }
+      const t = await businessToday(s);
+      await s.as(owner);
+      await s.query("select public.maintenance_add_mechanic($1, $2, true)", [ids[3], owner]);
+      const started = new Date(`${addDays(t, -8)}T13:00:00Z`);
+      await s.query("select public.maintenance_add_time($1, $2, $3, $4, 'Demo')", [ids[3], owner, started.toISOString(), new Date(started.getTime() + 3 * 3_600_000).toISOString()]);
+
+      const other = await shop(s, 1);
+      const otherWo = await createWo(s, { truck_id: other.trucks[0], title: "Replace brake shoes", category: "brakes", description: MARK });
+      await s.asAdmin();
+      await s.query("insert into public.company_memberships (company_id, user_id, role, active) values ($1, $2, 'owner', true)", [other.company, owner]);
+      const busy = new Date(`${addDays(t, -130)}T13:00:00Z`);
+      await s.query(
+        "insert into public.work_order_time_entries (company_id, work_order_id, user_id, started_at, ended_at, note) values ($1, $2, $3, $4, $5, 'Demo')",
+        [other.company, otherWo, owner, busy.toISOString(), new Date(busy.getTime() + 3 * 3_600_000).toISOString()]);
+      await s.query("update public.companies set is_demo = true, demo_kind = 'prospect' where id = $1", [company]);
+      await s.query("update public.profiles set active_company_id = $1 where id = $2", [company, owner]);
+
+      await s.as(owner);
+      expect((await s.query<{ n: number }>("select public.demo_repair_history() n")).rows[0].n).toBe(1);
+      await s.asAdmin();
+      const worked = (await s.query<{ d: string }>("select started_at::date::text d from public.work_order_time_entries where work_order_id = $1", [ids[3]])).rows[0].d;
+      expect(worked).not.toBe(addDays(t, -130));
+      expect(worked < addDays(t, -90)).toBe(true);
+    });
+  });
 });
 
 describe("a shop job scheduled before its part arrives", () => {

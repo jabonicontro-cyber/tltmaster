@@ -2,10 +2,14 @@
 // settings (and a Taviron Admin's starting preset before go-live), dependencies kept, every change recorded, nothing
 // deleted, and SF1's menu carried over.
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { pgError, pool, TOP_LINE, withSession, type Session } from "./helpers";
 
 afterAll(() => pool.end());
+
+const file = (dir: string, n: string) => readFileSync(join(__dirname, `../../supabase/${dir}/${n}`), "utf8").replace(/^\s*begin;\s*$/m, "").replace(/^\s*commit;\s*$/m, "");
 
 const off = async (s: Session, company: string) => {
   await s.asAdmin();
@@ -136,13 +140,58 @@ describe("workflow modules", () => {
       await s.query("select public.platform_set_company_modules($1, 'full')", [demo]);
       expect((await off(s, demo)).m).toEqual([]);
       await s.as(admin);
-      // Top Line (an existing customer) is never changed from the console.
+      // Top Line (an existing customer) is never changed from the console, on a database built from the migrations (where
+      // it is created that day) as on the hosted ones.
       expect((await pgError(s.query("select public.platform_set_company_modules($1, 'quotes_only')", [TOP_LINE]))).code).toBe("42501");
+      expect((await s.query<{ r: { can_set: boolean } }>("select public.platform_company_modules($1) r", [TOP_LINE])).rows[0].r.can_set).toBe(false);
+      // Nor is any company that already existed when the rule was installed (20261120024640), whatever its creation date,
+      // even one whose setup record says it is not live yet.
+      const known = await s.createCompany(`Modules Known ${randomUUID().slice(0, 6)} (test)`);
+      await s.asAdmin();
+      await s.query("insert into private.established_companies (company_id) values ($1)", [known]);
+      await s.query("insert into private.company_lifecycle (company_id) values ($1)", [known]);
+      await s.as(admin);
+      expect((await s.query<{ r: { can_set: boolean } }>("select public.platform_company_modules($1) r", [known])).rows[0].r.can_set).toBe(false);
+      expect((await pgError(s.query("select public.platform_set_company_modules($1, 'quotes_only')", [known]))).code).toBe("42501");
+      // A new company in setup (a lifecycle record, not live): the Admin may still pick its preset.
+      const setup = await s.createCompany(`Modules Setup ${randomUUID().slice(0, 6)} (test)`);
+      await s.asAdmin();
+      await s.query("insert into private.company_lifecycle (company_id) values ($1)", [setup]);
+      await s.as(admin);
+      await s.query("select public.platform_set_company_modules($1, 'quotes_only')", [setup]);
+      expect((await off(s, setup)).m).toContain("orders");
+      await s.as(admin);
 
       // A company person cannot use the console function.
       const owner = await s.createUser("owner", { companyId: fresh });
       await s.as(owner);
       expect((await pgError(s.query("select public.platform_set_company_modules($1, 'full')", [fresh]))).code).toBe("42501");
+    });
+  });
+
+  it("established companies (20261120024640): the rollback goes back to creation dates only, and the migration runs again", async () => {
+    await withSession(async (s) => {
+      const admin = await staff(s, "admin");
+      const known = await s.createCompany(`Modules Known ${randomUUID().slice(0, 6)} (test)`);
+      await s.asAdmin();
+      await s.query("insert into private.established_companies (company_id) values ($1)", [known]);
+      await s.as(admin);
+      expect((await s.query<{ r: { can_set: boolean } }>("select public.platform_company_modules($1) r", [known])).rows[0].r.can_set).toBe(false);
+
+      await s.asAdmin();
+      await s.query(file("rollbacks", "20261120024640_established_companies.down.sql"));
+      expect((await s.query<{ t: string | null }>("select to_regclass('private.established_companies')::text t")).rows[0].t).toBeNull();
+      // Back to the creation date alone: a company created today is new again.
+      await s.as(admin);
+      expect((await s.query<{ r: { can_set: boolean } }>("select public.platform_company_modules($1) r", [known])).rows[0].r.can_set).toBe(true);
+
+      // Applied again (as the migration workflow would): every company that exists now is established, Top Line included.
+      await s.asAdmin();
+      await s.query(file("migrations", "20261120024640_established_companies.sql"));
+      expect((await s.query("select 1 from private.established_companies where company_id = any($1::uuid[])", [[known, TOP_LINE]])).rowCount).toBe(2);
+      await s.as(admin);
+      expect((await s.query<{ r: { can_set: boolean } }>("select public.platform_company_modules($1) r", [known])).rows[0].r.can_set).toBe(false);
+      expect((await pgError(s.query("select public.platform_set_company_modules($1, 'quotes_only')", [TOP_LINE]))).code).toBe("42501");
     });
   });
 });

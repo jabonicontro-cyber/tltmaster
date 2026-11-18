@@ -263,8 +263,16 @@ test.describe("hired trucks", () => {
     // Smart Dispatch does not propose the own crew for it; it says why.
     await page.goto(`/dispatch?date=${f.day}&horizon=7`);
     const smart = page.locator('details[aria-label="Smart Dispatch"]');
+    await expect(smart.locator("summary").first()).toContainText(/unassigned load/);
+    // Six loads are shown first; load A (four days out) is often further down. "Show all" is a client toggle: a click
+    // that lands before the page is interactive does nothing, so it is clicked until the full list is open.
     const all = smart.getByRole("button", { name: /^Show all \d+ loads$/ });
-    if (await all.count()) await all.click();
+    if (await all.count()) {
+      await expect(async () => {
+        if (await all.count()) await all.click();
+        await expect(smart.getByRole("button", { name: "Show fewer" })).toBeVisible({ timeout: 1_000 });
+      }).toPass({ timeout: 20_000 });
+    }
     await expect(smart.getByRole("listitem", { name: `${f.a.orderNumber} load 1` })).toContainText("A hired truck accepted this load.");
   });
 });

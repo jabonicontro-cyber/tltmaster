@@ -101,7 +101,10 @@ begin
   loop
     -- Its work goes on a day of its own, about 130 to 670 days ago (opened and completed shortly after, still more than
     -- 90 days ago), where none of its recorded time would overlap anyone's other recorded time. A job with no such day
-    -- (not expected) is left where it is.
+    -- (not expected) is left where it is. "Anyone's" means in every company, as work_order_time_no_overlap checks: the
+    -- same person (a Taviron team member who owns several demos) has the same sample history in each of their demos,
+    -- recorded at the same times, and only this demo's moves are counted in v_k (CI 2026-11-18: a second demo made the
+    -- same day stopped on the constraint). Only whether a day is free is read; nothing of another company is returned.
     v_shift := null;
     loop
       exit when v_k > 60;
@@ -111,7 +114,7 @@ begin
       if not exists (
         select 1 from public.work_order_time_entries e
           join public.work_order_time_entries o
-            on o.company_id = e.company_id and o.user_id = e.user_id and o.work_order_id <> e.work_order_id and o.voided_at is null
+            on o.user_id = e.user_id and o.work_order_id <> e.work_order_id and o.voided_at is null
          where e.company_id = v_demo and e.work_order_id = r.id and e.voided_at is null
            and tstzrange(e.started_at + v_try, coalesce(e.ended_at + v_try, 'infinity'::timestamptz), '[)')
                && tstzrange(o.started_at, coalesce(o.ended_at, 'infinity'::timestamptz), '[)')) then

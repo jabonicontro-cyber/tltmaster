@@ -1,8 +1,38 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import pg from "pg";
 import { signIn } from "./helpers";
+import { OTHER_COMPANY } from "./users";
 
 // A second company must not see or reach any Top Line record through pages,
 // server actions or the PDF route.
+
+/** A sample customer of Top Line's seed (supabase/seed.sql). */
+const TOP_LINE_CUSTOMER = "Prairie View Landscaping";
+
+/** The record id in a link such as /customers/<id>?back=… */
+const idOf = (href: string) => href.split(/[/?#]/)[2];
+
+/** The record ids a list page links to (its table rows). */
+async function recordIds(page: Page, kind: "customers" | "quotes") {
+  const hrefs = await page.locator(`tbody a[href^='/${kind}/']`).evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
+  return [...new Set(hrefs.map(idOf).filter((id) => /^[0-9a-f-]{36}$/.test(id)))];
+}
+
+/** The companies (by slug) that own these records, read straight from the database. */
+async function companiesOf(table: "customers" | "quotes", ids: string[]) {
+  if (!ids.length) return [];
+  const c = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
+  await c.connect();
+  try {
+    const r = await c.query<{ id: string; slug: string }>(
+      `select t.id, co.slug from public.${table} t join public.companies co on co.id = t.company_id where t.id = any($1::uuid[])`, [ids]);
+    expect(r.rowCount, "every listed record is found").toBe(ids.length);
+    return [...new Set(r.rows.map((x) => x.slug))].sort();
+  } finally {
+    await c.end();
+  }
+}
+
 test("another company sees none of Top Line's records and cannot open them by URL", async ({ page, browser }) => {
   // Find a Top Line quote and customer as a Top Line user.
   const tl = await browser.newPage();
@@ -21,10 +51,19 @@ test("another company sees none of Top Line's records and cannot open them by UR
   await signIn(page, "otherOwner");
   await expect(page.getByRole("link", { name: /Brookside Aggregates \(e2e test\)\s?, home/ }).first()).toBeVisible(); // the workspace shows its own company
 
+  // The lists show none of Top Line's records. Brookside may have records of its own (tests/e2e/modules.spec.ts runs
+  // its presets there with its own customer and quote), so each record listed is checked to be Brookside's own.
   await page.goto("/customers");
-  await expect(page.locator("tbody a[href^='/customers/']")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const customers = await recordIds(page, "customers");
+  expect(customers).not.toContain(idOf(customerHref!));
+  expect(await companiesOf("customers", customers)).toEqual(customers.length ? [OTHER_COMPANY.slug] : []);
+  await expect(page.getByText(TOP_LINE_CUSTOMER)).toHaveCount(0);
   await page.goto("/quotes");
-  await expect(page.locator("tbody a[href^='/quotes/']")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const quotes = await recordIds(page, "quotes");
+  expect(quotes).not.toContain(idOf(quoteHref!));
+  expect(await companiesOf("quotes", quotes)).toEqual(quotes.length ? [OTHER_COMPANY.slug] : []);
   await page.goto("/materials");
   await expect(page.getByText("Gravel #53 limestone")).toHaveCount(0);
 

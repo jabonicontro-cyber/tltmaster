@@ -1424,32 +1424,38 @@ async function ownerDriverDay(db: Db, today: string): Promise<number> {
       { driver_id: d.id, kind: "medical_card", expires_on: addDays(today, 300), verified_at: verified },
     ]));
     n += 2;
-    // One open load today (or tomorrow), with a truck free at that time; refused assignments stay open.
+    // One open load today (or tomorrow), with a truck free at that time; refused assignments stay open. Each candidate
+    // load is tried in turn until the dispatch rules accept one: a single pick that no crew could take (all its trucks
+    // busy or in the shop) left the owner without a day, and My Day without loads (CI 2026-11-18).
+    const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+    // Tractors need a trailer: try without one, then each in-service trailer; the dispatch rules decide.
+    const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((t) => t.id)];
+    let assigned = false;
     for (const day of [today, addDays(today, 1)]) {
-      const open = ((await db.from("order_loads").select("id, order_id, starts_at, ends_at, orders(customer_id, site_line1)").eq("load_date", day).eq("status", "planned").order("starts_at")).data ?? []) as unknown as Array<{ id: string; order_id: string; orders: { customer_id: string; site_line1: string } | null }>;
+      const open = ((await db.from("order_loads").select("id, order_id, starts_at, ends_at, orders(customer_id, site_line1)").eq("load_date", day).eq("status", "planned").order("starts_at").order("id")).data ?? []) as unknown as Array<{ id: string; order_id: string; orders: { customer_id: string; site_line1: string } | null }>;
       const booked = new Set((((await db.from("dispatch_assignments").select("load_id").eq("status", "active")).data ?? []) as Array<{ load_id: string }>).map((a) => a.load_id));
       // A load at a site with directions first, so My Day shows the site directions check (B51).
       const withDirections = (((await db.from("customer_sites").select("customer_id, line1").neq("directions", "")).data ?? []) as Array<{ customer_id: string; line1: string }>);
       const atSite = (l: (typeof open)[number]) => withDirections.some((x) => x.customer_id === l.orders?.customer_id && x.line1.trim() === l.orders?.site_line1.trim());
-      // Not an order that makes stops (MK2): its card shows the stops route, and My Day should show the plain pickup (UX7).
+      // Not an order that makes stops (MK2) first: its card shows the stops route, and My Day should show the plain
+      // pickup (UX7). An order with stops only when no plain load can be assigned.
       const withStops = new Set((((await db.from("order_stops").select("order_id").is("removed_at", null)).data ?? []) as Array<{ order_id: string }>).map((x) => x.order_id));
       const allFree = open.filter((l) => !booked.has(l.id));
       const plain = allFree.filter((l) => !withStops.has(l.order_id));
-      const free = plain.length ? plain : allFree;
-      const load = free.find(atSite) ?? free[0];
-      if (!load) continue;
-      const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
-      // Tractors need a trailer: try without one, then each in-service trailer; the dispatch rules decide.
-      const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((t) => t.id)];
-      let assigned = false;
-      for (const t of trucks) {
-        for (const tr of trailers) {
-          const a = await demoAssign(db, { p_load_id: load.id, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" });
-          if (!a.error) { assigned = true; break; }
+      const stops = allFree.filter((l) => withStops.has(l.order_id));
+      const byDirections = (list: typeof open) => [...list.filter(atSite), ...list.filter((l) => !atSite(l))];
+      // A few candidates at most, so Refresh stays quick on a busy demo day.
+      for (const load of [...byDirections(plain), ...byDirections(stops)].slice(0, 6)) {
+        for (const t of trucks) {
+          for (const tr of trailers) {
+            const a = await demoAssign(db, { p_load_id: load.id, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" });
+            if (!a.error) { assigned = true; break; }
+          }
+          if (assigned) break;
         }
-        if (assigned) { n++; break; }
+        if (assigned) break;
       }
-      break;
+      if (assigned) { n++; break; }
     }
   }
   return n;

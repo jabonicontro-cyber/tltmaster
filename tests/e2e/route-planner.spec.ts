@@ -117,6 +117,10 @@ test("routing dimensions are entered in feet and pounds on the truck form", asyn
   await page.goto("/fleet/trucks/new");
   await page.getByLabel("Unit number").fill(unit);
   await page.getByLabel("Type").selectOption({ index: 1 });
+  // Optional, so folded away on a new truck until opened (walkthrough T9); it opens by itself when a value needs fixing
+  // and when the truck already has dimensions.
+  await expect(page.getByLabel("Height (ft)")).toBeHidden();
+  await page.locator("summary", { hasText: "Routing dimensions" }).click();
   await page.getByLabel("Height (ft)").fill("40");
   await page.getByRole("button", { name: "Add truck" }).click();
   await expect(page.getByText(/Height: enter/)).toBeVisible();

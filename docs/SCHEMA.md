@@ -718,6 +718,11 @@ the nine optional areas, so safety areas can't be hidden. Menu only. A new compa
 with eight of them hidden (all but Maintenance): trigger `z_starter_default_hidden_areas` on `private.company_lifecycle`
 (20261120022200; only companies created from 2026-11-14, not live, menu still empty).
 
+`private.established_companies` (20261120024640): every company that existed when the new-company rules were
+installed (Top Line and every existing customer; on a database built from the migrations, Top Line, created that day).
+Such a company is never "new": the Starter default never changes it and a Taviron Admin never sets its modules
+(`private.modules_preset_allowed`), whatever its creation date. No API access; read only by those two functions.
+
 ## Ask Taviron opt-in (20261120022000)
 
 `company_settings.ai_assistant_allowed` (default false), `ai_assistant_changed_at`, `ai_assistant_changed_by`: written

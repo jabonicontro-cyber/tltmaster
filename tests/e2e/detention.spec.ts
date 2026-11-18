@@ -41,7 +41,12 @@ test("billing adds a proposed detention charge and dismisses another with a reas
     await first.getByRole("button", { name: "Add to order" }).click();
     await expectToast(office, "Detention added to the order.");
     await expect(first.getByText("Added to the order")).toBeVisible();
-    await expect(office.getByText(/Detention: .+, waited 3 h 00 min \(60 min free\)/)).toBeVisible();
+    // The charge is an order line now (listed under Order lines since walkthrough M4, so the lines add up to the total)
+    // and the invoice draft prices it too: once in each table, by design.
+    const detention = /Detention: .+, waited 3 h 00 min \(60 min free\)/;
+    await expect(office.getByRole("table", { name: "Order lines" }).getByText(detention)).toBeVisible();
+    await expect(office.getByRole("table", { name: "Order lines" }).getByText(detention)).toHaveCount(1);
+    await expect(office.getByRole("table", { name: "Invoice draft" }).getByText(detention)).toHaveCount(1);
 
     const second = list.getByRole("listitem").filter({ hasText: "Waited 1 h 30 min" });
     await second.getByRole("button", { name: "Don't bill" }).click();
