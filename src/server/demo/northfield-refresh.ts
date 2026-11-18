@@ -7,6 +7,7 @@ import { ensureFeatureSamples } from "./samples";
 import { AVATARS, CAPACITY, CHARGE_ITEMS, CUSTOMERS, DRIVER_TITLES, DRIVERS, MATERIALS, STAFF, TRAILERS, TRUCKS } from "./seed";
 import { demoAssign } from "./assign";
 import { savePeople } from "./people";
+import { duplicateNotes, removeDuplicateSamples } from "./duplicates";
 
 /**
  * Keeps the presenter demo (Northfield Aggregates) current, the same way Refresh keeps Prairie Lantern Freight
@@ -53,6 +54,8 @@ export async function refreshNorthfield(db: Db): Promise<RefreshResult> {
   const timeZone = settings?.timezone || "America/Chicago";
   const today = todayIn(timeZone);
   let added = 0;
+  // Exact copies of sample customers and people (DP2): removed first, keeping the older row (see ./duplicates).
+  const duplicates = await removeDuplicateSamples(db, { customers: CUSTOMERS.map((c) => c.name), people: [...STAFF.map((s) => s.full_name), ...DRIVERS] });
 
   // --- Sample records missing from the current set -------------------------------------------
   const haveCharges = new Set(((await must("charge items", db.from("charge_items").select("code"))) as Array<{ code: string | null }>).map((c) => c.code));
@@ -189,5 +192,5 @@ export async function refreshNorthfield(db: Db): Promise<RefreshResult> {
   added += await ensureDemoLocations(db, NORTHFIELD_LOCATIONS);
   const samples = await ensureFeatureSamples(db, today);
   added += samples.added;
-  return { added, loads, notes: samples.notes };
+  return { added, loads, notes: [...duplicateNotes(duplicates), ...(samples.notes ?? [])] };
 }

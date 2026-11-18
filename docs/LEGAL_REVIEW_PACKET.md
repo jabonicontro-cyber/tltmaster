@@ -289,8 +289,14 @@ notice says locations and retention periods "will be listed here before general 
 - CSV downloads exist for: the customer list (`src/app/(app)/customers/export/route.ts`), a year's invoices and payments
   (`src/app/(app)/accountant/export/route.ts`), approved payroll periods (`src/app/(app)/payroll/periods/[id]/export/route.ts`),
   billing handoff batches (`src/app/(app)/billing/batches/[id]/csv/route.ts`), IFTA (`src/app/(app)/fleet/fuel/ifta.csv/route.ts`).
-- A **full company export** (all records and files): **Not implemented.** Formats and workflow are open (master plan §9 Q11).
-  Master plan §10 promises export at no charge on cancellation.
+- A **full company export** (owner 2026-11-17, master plan §12 EX1): Settings → Download your data, for the company's
+  **owner only** (not other roles, not a Taviron support visit), in a two-step verified session. A zip of CSV spreadsheets
+  of the company's records (customers, contacts, job sites, materials, price lists, quotes, orders and lines, loads,
+  assignments, tickets, invoices, payments and payments by ticket, trucks, trailers, drivers and qualifications, hired
+  trucks, people and sign-ins, work orders, fuel, time off) plus ticket photos and order documents in zips of up to 200
+  files. Each download is recorded in the company's audit log (who, when, which part; never contents). Migration
+  `20261120024500_data_export.sql`; `src/server/data-export/`. Master plan §10 promises export at no charge on cancellation;
+  the published FAQ ("we provide your records ... within 30 days of your request") stays true.
 
 ### 6.5 Backups
 
@@ -550,8 +556,8 @@ agreement (master plan §10 onboarding) is **Not implemented**.
 32. QR sign-in: while a driver's code works (once, within 10 minutes), whoever scans it is signed in as that driver. Should the
     terms put the duty to show codes only to the right person on the company?
 33. Exit terms (§8.4): align the published "30 days' notice", "export within 30 days, then delete" with master plan
-    §10's 90 days, with backups that keep data for 7 to 14 days after deletion, and with the fact that the export is a
-    manual process today.
+    §10's 90 days, and with backups that keep data for 7 to 14 days after deletion. (Since 2026-11-17 the owner can also
+    download all data themselves at any time, §6.4; the published promise was left unchanged.)
 34. Payments by ticket (TP1): Taviron records payments a company received from its customers (amount, date, method,
     reference) and never moves money. Any wording needed so customers do not read it as payment processing?
 35. One reply-to address for all companies' emails (`EMAIL_REPLY_TO`, §5): acceptable for Top Line's testing; before

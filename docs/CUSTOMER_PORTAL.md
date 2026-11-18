@@ -120,3 +120,18 @@ Tests: `tests/db/portal-tickets.test.ts` (another customer of the same company, 
 signed out see nothing), `tests/unit/portal-tickets.test.ts`, `tests/e2e/portal-tickets.spec.ts`, Testing Lab preview in
 `tests/e2e/testing-lab.spec.ts`.
 
+
+## Password reset (PR1, owner 2026-11-17)
+
+**Forgot your password?** on a portal's sign-in page (`/portal/<slug>/forgot-password`) is for sign-ins invited by
+email. The customer types their email; when this portal has an active, accepted sign-in for it, Supabase Auth emails
+its own reset link (the same *Reset password* template and `/auth/confirm` → `/update-password` link as the app's own
+reset), the customer chooses a new password and lands back on that portal (a one-hour cookie in the same browser; from
+another device the usual landing sends a portal-only account to its portal). The answer is the same whether or not the
+address has a sign-in, and a failed send is only logged (codes, never the address). Requests are limited per address
+like failed sign-ins (8 in 15 minutes, `signin_allowed` / `signin_failed` with a separate key). A username (no email
+address) is told to ask the company for a new sign-in, with that reason, as before. Demo portals send nothing. Portal
+accounts are unchanged: not memberships, only the password changes. No migration. Code: `src/app/portal/actions.ts`
+`requestPortalPasswordReset`, `src/app/portal/[slug]/forgot-password/page.tsx`. Test: `tests/e2e/portal-password-reset.spec.ts`
+(local mailbox: the link arrives for a real sign-in, nothing for an unknown address, the username reason, sign-in with the
+new password).
