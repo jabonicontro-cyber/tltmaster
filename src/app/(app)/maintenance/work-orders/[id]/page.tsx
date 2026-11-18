@@ -4,6 +4,8 @@ import Link from "next/link";
 import { UsePartForm } from "@/components/maintenance/parts-controls";
 import { listParts, partWaits, recentMovements, type PartRow } from "@/server/data/parts";
 import { PartsOnOrder } from "@/components/maintenance/parts-on-order";
+import { PartArrivalWarning } from "@/components/maintenance/part-arrival-warning";
+import { partArrivalConflict } from "@/lib/maintenance/part-arrival";
 import { InspectionCertificateForm, ReturnPartButton } from "@/components/maintenance/shop-records";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
@@ -105,6 +107,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   ];
   const fallback: Tab = wo.status === "awaiting_parts" && onOrder.installed ? "order" : showTriage && ["reported", "triaged"].includes(wo.status) ? "triage" : wo.status === "in_progress" ? "labor" : "tasks";
   const tab: Tab = tabs.some((t) => t.key === sp.tab) ? (sp.tab as Tab) : fallback;
+  const arrival = onOrder.installed ? partArrivalConflict(wo, onOrder.rows, today) : null;
 
   return (
     <>
@@ -130,6 +133,13 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
             {unitWord} {unit?.unit_number} is out of service and cannot be dispatched until someone authorized records a passed inspection.
           </Notice>
         </div>
+      )}
+
+      {/* Scheduled before a part on order is expected (WK3): a warning and a move offer; nothing moves on its own. */}
+      {arrival && (
+        <Card className="mb-5">
+          <div className="px-5 py-4 sm:px-6"><PartArrivalWarning conflict={arrival} canMove={manage} /></div>
+        </Card>
       )}
 
       {manage && wo.status !== "closed" && wo.status !== "canceled" && (

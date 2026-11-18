@@ -1,5 +1,7 @@
 "use client";
 
+import { PartArrivalWarning } from "@/components/maintenance/part-arrival-warning";
+import type { PartArrivalConflict } from "@/lib/maintenance/part-arrival";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -234,7 +236,7 @@ export function WaitForPart({ workOrderId, editSeq, size = "lg", initialPart = "
 }
 
 /** One of my jobs: the next step that fits its state, and the whole card opens the job. */
-export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null }: { job: MyJob; timerHere: boolean; timerElsewhere: boolean; partsText?: string | null }) {
+export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null, arrival = null, canMove = false }: { job: MyJob; timerHere: boolean; timerElsewhere: boolean; partsText?: string | null; arrival?: PartArrivalConflict | null; canMove?: boolean }) {
   const { pending, run } = useRun();
   const canStart = ["reported", "triaged", "scheduled", "awaiting_parts"].includes(job.status);
   const working = job.status === "in_progress";
@@ -258,6 +260,7 @@ export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null }: 
         {partsText && <> · <span data-testid="parts-summary">{partsText}</span></>}
       </p>
       <p className="mt-1 text-sm font-medium text-ink" data-testid="next-step">{mechanicNextStep(job, timerHere ? "here" : timerElsewhere ? "elsewhere" : "none")}</p>
+      {arrival && <PartArrivalWarning conflict={arrival} canMove={canMove} className="mt-2" />}
       {timerHere && asking !== "finish" && (
         <label className="relative z-10 mt-3 block text-sm">
           <span className="text-muted">What you found or did (optional, saved with your time)</span>

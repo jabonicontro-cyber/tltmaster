@@ -547,6 +547,20 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(stops.rows).toHaveLength(1);
     expect(stops.rows[0].kinds[0]).toBe("pickup");
     expect(stops.rows[0].kinds.slice(1).every((k) => k === "delivery") && stops.rows[0].kinds.length >= 2).toBe(true);
+    // WK3 (owner 2026-11-16/17): a job scheduled before its part arrives, added once; and with the sample repairs spread
+    // over months, only one or two demo trucks read At risk (same rule as src/lib/fleet/health.ts, default 3).
+    const arrival = await q<{ n: string }>("select count(*) n from public.work_orders where company_id = $1 and title = 'Replace wiper motor (demo)' and status = 'scheduled'", [w.company]);
+    expect(Number(arrival.rows[0].n)).toBe(1);
+    const atRisk = await q<{ unit_number: string }>(
+      `select t.unit_number from public.trucks t
+        where t.company_id = $1 and t.active and t.hauler_id is null
+          and (t.service_status = 'out_of_service'
+               or exists (select 1 from public.work_orders w where w.truck_id = t.id and w.status in ('reported', 'triaged', 'scheduled', 'in_progress', 'awaiting_parts', 'awaiting_inspection') and (w.safety_critical or w.restricted_truck))
+               or (select count(*) from public.work_orders w where w.truck_id = t.id and w.created_at >= ($2::date - 90)::timestamptz and w.status <> 'canceled'
+                     and w.category not in ('preventive', 'inspection') and w.source <> 'preventive')
+                  >= (select (s.truck_health_rules ->> 'at_risk_repairs')::int from public.company_settings s where s.company_id = $1))`, [w.company, todayIn(TZ)]);
+    expect(atRisk.rows.length).toBeGreaterThanOrEqual(1);
+    expect(atRisk.rows.length).toBeLessThanOrEqual(2);
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
     expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
     const decidedAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%'", [w.company]);

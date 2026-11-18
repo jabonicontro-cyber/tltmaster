@@ -406,6 +406,10 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // 20261120022200: new Starter companies start with the essentials in the menu (trigger on the platform lifecycle only;
   // the lifecycle row's own company, created on or after 2026-11-14, not live, menu not yet set).
   "private.starter_default_hidden_areas",
+  // 20261120024600-024630 (WK3): a stop added to an assigned load tells its driver (trigger only; the inserted stops'
+  // own company and order, the drivers on that company's active assignments). Demo samples (realistic repair history,
+  // a job scheduled before its part arrives): demo owner only.
+  "private.alerts_from_new_stops", "public.demo_repair_history", "public.demo_part_arrival_sample",
 ];
 
 /**

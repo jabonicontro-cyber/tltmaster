@@ -738,6 +738,8 @@ own company, a truck-day order, 1 to 50), each through `save_order_load`.
 
 - `save_order_stops(order, stops jsonb)` (`orders.edit`): replaces the order's current stops with the list in order (ids of current stops are kept and updated, others added, the rest marked removed); the first stop must be a pickup and the last a delivery; refused on completed and canceled orders and for other companies' orders; audited as `order.stops_saved`.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
+- `private.alerts_from_new_stops` (20261120024600, WK3): a deferred trigger on new stops; when the save commits, the drivers on active assignments of that order's loads from today on get one in-app notice per save (`dispatch.stop_added`, "Stop added: …" with the new stops in its detail). Nothing is sent by email or text.
+- Truck health rules (`company_settings.truck_health_rules`): default `at_risk_repairs` 3 since 20261120024610 (was 2; companies that never changed their rules moved to 3).
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
 ## Subscription notices (20261120008800, SUB1)
