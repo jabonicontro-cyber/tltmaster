@@ -1,11 +1,33 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-12 (released `0c22b47`: owner decisions, platform console). Earlier: 2026-11-11 workday (released `00e08e5`). Earlier: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-18 (released `a2419da`: workflow modules, money visibility, owner items A–C, 28 migrations). Earlier: 2026-11-12 (released `0c22b47`: owner decisions, platform console). Earlier: 2026-11-11 workday (released `00e08e5`). Earlier: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 00000000000000000000000000000000. 2026-11-18 — released `a2419da` to Production
+
+- **Released:** Production fast-forwarded to `a2419da` (13:23 UTC) after the full CI run on it passed (run 44305600283:
+  checks, database, full browser suite, release risk; Preview deploy success). Owner approved the 28 migrations
+  2026-11-18 (question asked once, recommended option). Production CI passed; the `Database migrations (Production)`
+  workflow (run 44314204195) took the encrypted backup (artifact `production-db-backup-44314204195`), applied
+  `20261120020800` through `20261120024730` (28) and confirmed nothing pending; Vercel Production deploy success;
+  `/api/health` ok (app, sign-in, database); `/login`, `/admin` and `/` answer 401 behind the early-access gate as
+  intended. Signed-in pages not verified live (no live account in this session).
+- **Contents:** MOD1 workflow modules and tickets without Dispatch, SEC6, SEC7 order/quote totals for money access only
+  (+ CRM opportunity values), PC2 console owner invite and revenue, PR1 portal password reset, EX1 data export, INV1,
+  BL1, O2C1, TM1, WN1, DP2, WK3 fixes, UX16 site story, the ten published website features, Next.js 16.4.6.
+- **Rollback note:** an app rollback to a commit before SEC7 also needs `supabase/rollbacks/20261120024700_*.down.sql`
+  (the earlier app selects `*` on orders/quotes, which the column grants refuse: "permission denied for table orders").
+  This was seen once locally when an older build ran against the new database; the current code reads named columns.
+- **CI fixes on the way:** tickets-without-dispatch test used 06:30 "today" (in the future before dawn; now midnight);
+  the full browser suite outgrew 60 minutes on one worker (job limit now 90; each test keeps its 60 s limit).
+- **Known log noise:** "Plan the day failed: cookies() inside after()" appears when the person leaves the page before the
+  plan finishes (Next marks the request finished); nobody sees it. Not changed.
+- **Local DB leftovers** (not product bugs): truck "101" and quote history in Top Line from browser runs make
+  `fleet.test.ts` and `order-management.test.ts` fail locally; a fresh database (CI) passes.
 
 ## 0000000000000000000000000000000. 2026-11-18 — owner items C (branch `owner-items-c`, committed, not pushed)
 
