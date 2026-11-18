@@ -41,7 +41,7 @@ export default async function NewTicketPage({ searchParams }: { searchParams: Pr
           crumbs={[{ label: words.documents, href: "/tickets" }, { label: words.enter }]}
           description={say("Pick the customer and their job, copy what the paper ticket says and add its photo. Truck and driver are optional.")}
         />
-        <TicketJobForm data={data} industry={industry ?? undefined} canCreateJob={can(access, "orders.edit") || can(access, "orders.create")} initialCustomerId={customer && uuid.safeParse(customer).success ? customer : ""} />
+        <TicketJobForm data={data} industry={industry ?? undefined} canCreateJob={can(access, "orders.edit") || can(access, "orders.create")} canGoAheadForJob={can(access, "orders.edit")} initialCustomerId={customer && uuid.safeParse(customer).success ? customer : ""} />
       </>
     );
   }

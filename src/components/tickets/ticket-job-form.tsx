@@ -23,7 +23,7 @@ import { adaptWording } from "@/lib/industry";
  * → what the paper ticket says → optional truck and driver → photo. The database checks everything again and records
  * the delivery with the ticket; billing prices it from the job.
  */
-export function TicketJobForm({ data, canCreateJob, initialCustomerId = "", industry }: { data: TicketEntryWithoutDispatch; canCreateJob: boolean; initialCustomerId?: string; /** A freight carrier reads "BOL" and "commodity" (T3). */ industry?: string }) {
+export function TicketJobForm({ data, canCreateJob, canGoAheadForJob = false, initialCustomerId = "", industry }: { data: TicketEntryWithoutDispatch; canCreateJob: boolean; /** May create a job for a customer on credit hold, with a reason (orders.edit, as for a new order). */ canGoAheadForJob?: boolean; initialCustomerId?: string; /** A freight carrier reads "BOL" and "commodity" (T3). */ industry?: string }) {
   const router = useRouter();
   const say = (text: string) => adaptWording(text, industry);
   const [jobs, setJobs] = useState<TicketJob[]>(data.jobs);
@@ -43,6 +43,11 @@ export function TicketJobForm({ data, canCreateJob, initialCustomerId = "", indu
   const [newJob, setNewJob] = useState<null | { siteLabel: string; materialId: string; unitCode: string; price: string; priceNote: string; quantity: string }>(null);
   const [jobPending, setJobPending] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
+  // Credit hold (B128): known when the page loaded, or reported by the server when it was put on hold since.
+  const [heldSince, setHeldSince] = useState<Record<string, string>>({});
+  const [creditReason, setCreditReason] = useState("");
+  const hold = customerId ? (data.creditHolds[customerId] ?? heldSince[customerId] ?? null) : null;
+  const reasonMissing = Boolean(hold) && creditReason.trim().length < 3;
 
   const unitLabel = (code: string | null | undefined) => data.units.find((u) => u.code === code)?.label ?? code ?? "";
   const set = (k: keyof typeof v) => (e: { target: { value: string } }) => {
@@ -94,9 +99,16 @@ export function TicketJobForm({ data, canCreateJob, initialCustomerId = "", indu
       taxable: material.taxable_default,
       taxRateBp: customer.tax_exempt ? 0 : data.defaultTaxRateBp,
       deliveredDate: v.deliveredDate,
+      creditReason: hold ? creditReason : undefined,
     });
     setJobPending(false);
-    if (!r.ok) return setJobError(r.error);
+    if (!r.ok) {
+      if (r.fieldErrors?.creditReason) {
+        setHeldSince((h) => ({ ...h, [customerId]: r.fieldErrors!.creditReason }));
+        return setJobError("This customer is on credit hold: give the reason for going ahead above, then create the job.");
+      }
+      return setJobError(r.error);
+    }
     const created: TicketJob = {
       id: r.data.orderId, order_number: r.data.orderNumber, customer_id: customerId, customer_name: customer.name, label: newJob.siteLabel, status: "in_progress",
       lines: [{ id: r.data.orderLineId, description: material.name, unit_code: newJob.unitCode, quantity: newJob.quantity || v.quantity }],
@@ -116,11 +128,15 @@ export function TicketJobForm({ data, canCreateJob, initialCustomerId = "", indu
     const r = await submitTicketWithoutDispatch({
       orderId, orderLineId: lineId, deliveredDate: v.deliveredDate, deliveredTime: v.deliveredTime, quantity: v.quantity, unitCode: v.unitCode,
       externalReference: v.externalReference, notes: v.notes, truckId: v.truckId || null, trailerId: v.trailerId || null, driverId: v.driverId || null,
-      submissionKey, confirmDuplicate: confirmed,
+      submissionKey, confirmDuplicate: confirmed, creditReason: hold ? creditReason : undefined,
     });
     if (!r.ok) {
       setPending(false);
       if ("needsConfirmation" in r) return setConfirmMessage(r.error);
+      if (r.fieldErrors?.creditReason) {
+        setHeldSince((h) => ({ ...h, [customerId]: r.fieldErrors!.creditReason }));
+        return setError("This customer is on credit hold: give the reason for going ahead, then submit again.");
+      }
       setError(r.error);
       setFieldErrors(r.fieldErrors ?? {});
       return;
@@ -161,6 +177,17 @@ export function TicketJobForm({ data, canCreateJob, initialCustomerId = "", indu
               {customerJobs.map((j) => <option key={j.id} value={j.id}>{j.order_number}{j.label ? ` · ${j.label}` : ""}</option>)}
             </Select>
           </Field>
+          {hold && (
+            <div role="alert" className="space-y-2 rounded-xl border border-critical/40 bg-critical/5 p-3 sm:col-span-2">
+              <p className="text-sm font-semibold text-critical">{hold}</p>
+              <p className="text-sm text-ink">
+                Billing decides on credit holds and can release this one on the customer&apos;s page. To enter this ticket now anyway, give a reason; it is recorded with the ticket{canCreateJob && canGoAheadForJob ? " (and with the job if you create a new one)" : ""}.
+              </p>
+              <Field label="Reason for going ahead" htmlFor="j-credit-reason" required hint="At least 3 characters.">
+                <Input id="j-credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
+              </Field>
+            </div>
+          )}
           {customerId && canCreateJob && !newJob && (
             <div className="sm:col-span-2">
               <button type="button" className={buttonClasses("secondary", "sm")} onClick={() => setNewJob({ siteLabel: "", materialId: "", unitCode: "", price: "", priceNote: "", quantity: "" })}>
@@ -201,7 +228,7 @@ export function TicketJobForm({ data, canCreateJob, initialCustomerId = "", indu
                 </Field>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={saveJob} loading={jobPending}>Create job</Button>
+                <Button size="sm" onClick={saveJob} loading={jobPending} disabled={canGoAheadForJob && reasonMissing}>Create job</Button>
                 <Button size="sm" variant="ghost" onClick={() => { setNewJob(null); setJobError(null); }}>Cancel</Button>
               </div>
             </div>
@@ -293,7 +320,7 @@ export function TicketJobForm({ data, canCreateJob, initialCustomerId = "", indu
 
       <div className="flex justify-end gap-2">
         <Link href="/tickets" className={buttonClasses("ghost")}>Cancel</Link>
-        <Button onClick={submit} loading={pending} disabled={!orderId || !lineId || Boolean(confirmMessage && !confirmed)}>{say("Submit ticket")}</Button>
+        <Button onClick={submit} loading={pending} disabled={!orderId || !lineId || Boolean(confirmMessage && !confirmed) || reasonMissing}>{say("Submit ticket")}</Button>
       </div>
     </div>
   );

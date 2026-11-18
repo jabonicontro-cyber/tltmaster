@@ -1,4 +1,6 @@
 import "server-only";
+import { creditHoldSentence } from "@/lib/dispatch/board";
+import { creditHolds, holdSummary } from "@/server/credit";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
 import type { OrderListRow, UnitRow } from "./types";
@@ -16,12 +18,13 @@ export interface TicketJob {
 
 /**
  * Everything the ticket form needs when the company has Dispatch off (MOD1, docs/MODULES.md §5): customers, their open
- * jobs with material lines, the catalog for a new job, units, trucks, trailers and drivers (all optional on the ticket).
+ * jobs with material lines, the catalog for a new job, units, trucks, trailers and drivers (all optional on the ticket),
+ * and which customers are on credit hold (B128: the form asks for the reason up front; the database checks it again).
  * Read with the person's own permissions (row-level security).
  */
 export async function getTicketEntryWithoutDispatch() {
   const supabase = await createClient();
-  const [customers, orders, materials, units, trucks, trailers, drivers, settings, { today }] = await Promise.all([
+  const [customers, orders, materials, units, trucks, trailers, drivers, settings, { today }, holds] = await Promise.all([
     supabase.from("customers").select("id, name, tax_exempt").eq("active", true).order("name").limit(2000),
     supabase
       .from("order_list")
@@ -36,6 +39,7 @@ export async function getTicketEntryWithoutDispatch() {
     supabase.from("driver_list").select("id, display_name, active").eq("active", true).order("display_name"),
     supabase.from("company_settings").select("default_tax_rate_bp, ticket_reference_required").maybeSingle(),
     businessToday(),
+    creditHolds(),
   ]);
   type OrderPick = Pick<OrderListRow, "id" | "order_number" | "customer_id" | "customer_name" | "project_name" | "site_label" | "site_line1" | "status">;
   const orderRows = (orders.data ?? []) as OrderPick[];
@@ -69,6 +73,8 @@ export async function getTicketEntryWithoutDispatch() {
     defaultTaxRateBp: s?.default_tax_rate_bp ?? 0,
     referenceRequired: s?.ticket_reference_required ?? true,
     today,
+    /** Customer id → why they are on credit hold (a sentence), for customers on hold only. */
+    creditHolds: Object.fromEntries([...holds.values()].map((h) => [h.customerId, creditHoldSentence(`${h.name} is ${holdSummary(h)}`)])) as Record<string, string>,
   };
 }
 

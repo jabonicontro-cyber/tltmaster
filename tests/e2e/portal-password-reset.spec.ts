@@ -35,7 +35,15 @@ function mailsTo(to: string, after: number): number {
     .filter((m) => m.to.some((t) => t.toLowerCase() === to.toLowerCase())).length;
 }
 
+/**
+ * Reset requests are limited per network address and per portal too (security review 2026-11-18); this test server is
+ * reached from 127.0.0.1, so earlier runs' requests are cleared first (only these keys, never sign-in failures).
+ */
+const limitKeys = [...["127.0.0.1", "::1", "::ffff:127.0.0.1", "local"].map((ip) => `portal-reset-ip:${ip}`), `portal-reset-portal:${TOP_LINE_SLUG}`];
+const resetLimits = () => sql("delete from private.signin_failures f using unnest($1::text[]) k where f.login_hash = encode(sha256(convert_to(k, 'UTF8')), 'hex')", [limitKeys]);
+
 test.beforeEach(async () => {
+  await resetLimits();
   await sql("insert into private.portal_entitlements (company_id, entitled, note) values ($1, true, 'e2e') on conflict (company_id) do update set entitled = true", [TOP_LINE]);
   await sql("insert into public.portal_settings (company_id, enabled) values ($1, true) on conflict (company_id) do update set enabled = true", [TOP_LINE]);
 });
@@ -44,6 +52,7 @@ test.afterEach(async () => {
   await sql("update public.portal_accounts set status = 'revoked', revoked_at = now() where company_id = $1 and email like 'e2e-reset-%' and status <> 'revoked'", [TOP_LINE]);
   await sql("update public.portal_settings set enabled = false where company_id = $1", [TOP_LINE]);
   await sql("delete from private.portal_entitlements where company_id = $1", [TOP_LINE]);
+  await resetLimits();
 });
 
 test("a customer invited by email resets a forgotten password from the portal and signs in with the new one", async ({ browser }) => {
@@ -79,9 +88,13 @@ test("a customer invited by email resets a forgotten password from the portal an
     await cust.getByLabel("Email").fill(email.toUpperCase());
     await cust.getByRole("button", { name: "Email Me a Reset Link" }).click();
     await expect(cust.getByRole("status")).toContainText(`If ${email} has a sign-in for this portal, a link to choose a new password is on its way.`);
+    // The answer comes before the account is looked up; the email follows from the server after it.
     const mail = await latestMail(email, sentAt);
     expect(mail.subject).toMatch(/Reset/);
     expect(mailsTo(stranger, strangerAt)).toBe(0);
+    // Both requests counted against this network address and this portal (keys of their own, hashed).
+    const counted = await sql<{ n: number }>("select count(*)::int n from private.signin_failures f, unnest($1::text[]) k where f.login_hash = encode(sha256(convert_to(k, 'UTF8')), 'hex')", [limitKeys]);
+    expect(counted[0].n).toBeGreaterThanOrEqual(4);
 
     await cust.goto(mail.link.replace(/^https?:\/\/[^/]+/, ""));
     await cust.getByLabel("New password", { exact: true }).fill("Portal-Reset-Passw0rd!");

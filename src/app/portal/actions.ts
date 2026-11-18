@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 import { SIGNIN_LIMIT_MESSAGE, recordSignInFailure, signInAllowed } from "@/server/signin-limit";
+import { clientIp } from "@/server/early-access";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SHARED_DEVICE_COOKIE, wantsBrowserSession } from "@/lib/shared-device";
@@ -65,9 +68,11 @@ const resetEmail = z.email("Enter the email address you sign in with.");
  * "Forgot your password?" on a portal's sign-in page (owner 2026-11-17, master plan §12 PR1): for accounts invited by
  * email. Supabase Auth emails its own reset link (the same template and link as the app's reset); the person chooses
  * a new password and comes back to this portal. The answer is the same whether or not the address has a sign-in here,
- * and a failed send is only logged, so nobody can learn who has an account. A username has no mailbox: it keeps
- * "ask the company", with that reason. Requests per address are limited like failed sign-ins (8 in 15 minutes).
- * Portal accounts stay what they are (not memberships); only the password changes.
+ * and it is given before anything about the address is looked up: the account lookup and the email run after the
+ * response (security review 2026-11-18, L: response time revealed which addresses have a portal sign-in), and a failed
+ * send is only logged, so nobody can learn who has an account. A username has no mailbox: it keeps "ask the company",
+ * with that reason. Requests are limited like failed sign-ins (8 in 15 minutes) per address, per network address and
+ * per portal. Portal accounts stay what they are (not memberships); only the password changes.
  */
 export async function requestPortalPasswordReset(formData: FormData): Promise<ActionResult> {
   const slug = slugOf(formData);
@@ -81,18 +86,40 @@ export async function requestPortalPasswordReset(formData: FormData): Promise<Ac
   const email = parsed.data.toLowerCase();
   if (isUsernameEmail(email)) return fail(usernameReason);
   if (card.is_demo) return fail("This is a demo company: its portal does not send email. Nothing was sent.");
-  const limitKey = `portal-reset:${email}`;
-  if (!(await signInAllowed(limitKey))) return fail("Too many reset requests for this email. Wait 15 minutes and try again.");
-  await recordSignInFailure(limitKey);
+  // Three limits with their own keys (never the sign-in keys): this address, this network address, this portal.
+  const limits = [
+    { key: `portal-reset:${email}`, message: "Too many reset requests for this email. Wait 15 minutes and try again." },
+    { key: `portal-reset-ip:${await clientIp()}`, message: "Too many reset requests from this network. Wait 15 minutes and try again." },
+    { key: `portal-reset-portal:${slug}`, message: "Too many reset requests for this portal right now. Wait 15 minutes and try again." },
+  ];
+  const allowed = await Promise.all(limits.map((l) => signInAllowed(l.key)));
+  const limited = limits.find((_, i) => !allowed[i]);
+  if (limited) return fail(limited.message);
+  await Promise.all(limits.map((l) => recordSignInFailure(l.key)));
   // Back to this portal after the new password is saved (same browser). Set for every request, so the answer never
   // differs between an address with a sign-in and one without.
   (await cookies()).set(PORTAL_RETURN, slug, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 3600, path: "/" });
-  if (await hasPortalSignIn(slug, email)) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${env().APP_BASE_URL}/auth/confirm?next=/update-password` });
-    if (error) console.warn("Portal password reset email failed", { status: error.status, code: error.code });
-  }
+  // After the response: whether the address has a sign-in here, and the email. Nothing in it reads the request.
+  const redirectTo = `${env().APP_BASE_URL}/auth/confirm?next=/update-password`;
+  after(() => sendPortalReset(slug, email, redirectTo));
   return ok(undefined, `If ${email} has a sign-in for this portal, a link to choose a new password is on its way. It can take a few minutes; check the spam folder too.`);
+}
+
+/**
+ * The reset email, sent after the response only when this portal has a sign-in for the address. Uses its own client
+ * without the request's cookies: the link in the email carries a token hash (supabase/templates/recovery.html) that
+ * /auth/confirm verifies in whichever browser opens it. Failures are logged without the address.
+ */
+async function sendPortalReset(slug: string, email: string, redirectTo: string): Promise<void> {
+  try {
+    if (!(await hasPortalSignIn(slug, email))) return;
+    const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } = env();
+    const supabase = createServerClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, { cookies: { getAll: () => [], setAll: () => {} } });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) console.warn("Portal password reset email failed", { status: error.status, code: error.code });
+  } catch {
+    console.warn("Portal password reset email failed");
+  }
 }
 
 /**
