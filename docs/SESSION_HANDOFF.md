@@ -7,6 +7,28 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 0000000000000000000000000000000. 2026-11-18 — owner items C (branch `owner-items-c`, committed, not pushed)
+
+- **Built and tested locally (not pushed, not deployed; four migrations not applied to the hosted database):** SEC7 order
+  and quote totals for billing or pricing access only (`20261120024700`), INV1 "Who sends your invoices: Taviron or
+  QuickBooks?" (`20261120024710`), BL1 the PO asked on acceptance (`20261120024730`) and invoices overdue but never sent,
+  O2C1 Billing as the daily work list and Order to Cash as the read-only overview (Invoiced and Paid stages), TM1 the
+  driver's "Mistake on my ticket" (`20261120024720`). Master plan §12 rows SEC7, INV1, BL1, O2C1, TM1; SCHEMA,
+  DEMO_TENANTS, MARKETING updated. Every migration has a rollback, run locally (apply, roll back, apply again); none
+  matches the destructive-statement guard.
+- **Security review needed before release (money data):** SEC7 changes who reads order and quote totals (column grants,
+  views, definer functions, the order/quote history, `save_order_draft` / `save_quote_draft` answers, the Command
+  Center's unscheduled-order details). Open question for the owner (one at a time): sales-pipeline opportunity values
+  (`crm_opportunities.value_cents`, customers.view) were left as they are.
+- **Website (LR2):** the ten features captured from a local production build (fresh presenter demo shown as Growth, a
+  plain-named local capture owner) and published (`published: true`, `verified: "2026-11-18"`); the pricing page names
+  each tier's bases now that multiple bases is published. Capture script fixes: a hidden copy of the ready text no longer
+  fails a shot; `--only id,id` no longer becomes the output folder.
+- **Local test data notes:** `command-center.spec` "another company sees only its own (empty) command center" and
+  `batch1-money-office` M2 fail on accumulated local test data (Brookside has items from other specs; repeated check
+  numbers), not on these changes; `demo-parity` failed once on the Dispatcher's acknowledged driver report (field reports,
+  unchanged here).
+
 ## 000000000000000000000000000000. 2026-11-14 to 11-17 — finish everything Claude can do; owner decisions (question by question)
 
 - **Owner 2026-11-14:** "ensure everything you can have done without me is complete. I want the site finished from your
