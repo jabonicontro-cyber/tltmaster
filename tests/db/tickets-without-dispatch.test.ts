@@ -50,8 +50,9 @@ describe("tickets without dispatch", () => {
         [TOP_LINE, order.id, load.load_id, order.materialLine]));
       expect((await marked).code).toBe("42501");
       await s.as(owner);
+      // Midnight: a time that has already passed today whenever the test runs (06:30 is still ahead before dawn).
       const t = await rpc<{ status: string }>(s, "submit_delivery_ticket", JSON.stringify({
-        load_id: load.load_id, order_line_id: order.materialLine, delivered_date: today, delivered_time: "06:30", quantity: "20", unit_code: "ton", external_reference: `D-${randomUUID().slice(0, 6)}` }));
+        load_id: load.load_id, order_line_id: order.materialLine, delivered_date: today, delivered_time: "00:00", quantity: "20", unit_code: "ton", external_reference: `D-${randomUUID().slice(0, 6)}` }));
       expect(["submitted", "needs_review"]).toContain(t.status);
     });
   });
