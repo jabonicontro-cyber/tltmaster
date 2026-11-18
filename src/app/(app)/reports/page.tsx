@@ -13,7 +13,7 @@ import { addDays, formatDate, isIsoDate } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
 import { requireAccess } from "@/server/auth";
-import { can } from "@/lib/permissions";
+import { can, canSeeSalesTotals } from "@/lib/permissions";
 import { ProfitSection, type ProfitReport } from "@/components/reports/profit-section";
 import { QuoteOutcomesSection } from "@/components/reports/quote-outcomes";
 import { loadQuoteOutcomes } from "@/server/data/quote-outcomes";
@@ -358,7 +358,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
           {scorecard ? <DriverScorecardTable rows={scorecard} /> : null}
 
-          {quoteOutcomes ? <QuoteOutcomesSection data={quoteOutcomes} /> : null}
+          {quoteOutcomes ? <QuoteOutcomesSection data={quoteOutcomes} values={canSeeSalesTotals(access)} /> : null}
 
           {profit ? (
             <>
@@ -375,7 +375,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 /** Per dispatch base: each truck, driver and order belongs to exactly one base, so the rows add up to the total row. */
 function BaseReport({ rows, bases }: { rows: BaseSummary[]; bases: DispatchBase[] }) {
   const name = new Map(bases.map((b) => [b.id, b]));
-  const total = rows.reduce((t, x) => ({ trucks: t.trucks + x.trucks, drivers: t.drivers + x.drivers, orders: t.orders + x.orders, loads: t.loads + x.loads, ordered_cents: t.ordered_cents + x.ordered_cents }), { trucks: 0, drivers: 0, orders: 0, loads: 0, ordered_cents: 0 });
+  const total = rows.reduce((t, x) => ({ trucks: t.trucks + x.trucks, drivers: t.drivers + x.drivers, orders: t.orders + x.orders, loads: t.loads + x.loads, ordered_cents: t.ordered_cents + (x.ordered_cents ?? 0) }), { trucks: 0, drivers: 0, orders: 0, loads: 0, ordered_cents: 0 });
+  // Ordered value only for billing or pricing access (SEC7).
+  const value = rows.every((x) => x.ordered_cents !== null);
   return (
     <section aria-label="By dispatch base" className="space-y-3">
       <h2 className="text-lg font-bold">By Dispatch Base</h2>
@@ -384,18 +386,18 @@ function BaseReport({ rows, bases }: { rows: BaseSummary[]; bases: DispatchBase[
         <TableWrap>
           <Table aria-label="Dispatch base report">
             <thead>
-              <tr><Th>Base</Th><Th align="right">Trucks</Th><Th align="right">Drivers</Th><Th align="right">Orders</Th><Th align="right">Loads</Th><Th align="right">Ordered value</Th></tr>
+              <tr><Th>Base</Th><Th align="right">Trucks</Th><Th align="right">Drivers</Th><Th align="right">Orders</Th><Th align="right">Loads</Th>{value && <Th align="right">Ordered value</Th>}</tr>
             </thead>
             <tbody>
               {rows.map((x) => (
                 <Tr key={x.id}>
                   <Td><span className="font-semibold">{name.get(x.id)?.name ?? "Base"}</span> {name.get(x.id) && !name.get(x.id)!.active ? <span className="text-xs text-muted">(inactive)</span> : null}</Td>
-                  <Td align="right">{x.trucks}</Td><Td align="right">{x.drivers}</Td><Td align="right">{x.orders}</Td><Td align="right">{x.loads}</Td><Td align="right">{formatCents(x.ordered_cents)}</Td>
+                  <Td align="right">{x.trucks}</Td><Td align="right">{x.drivers}</Td><Td align="right">{x.orders}</Td><Td align="right">{x.loads}</Td>{value && <Td align="right">{formatCents(x.ordered_cents ?? 0)}</Td>}
                 </Tr>
               ))}
               <Tr>
                 <Td><span className="font-semibold">All bases</span></Td>
-                <Td align="right" className="font-semibold">{total.trucks}</Td><Td align="right" className="font-semibold">{total.drivers}</Td><Td align="right" className="font-semibold">{total.orders}</Td><Td align="right" className="font-semibold">{total.loads}</Td><Td align="right" className="font-semibold">{formatCents(total.ordered_cents)}</Td>
+                <Td align="right" className="font-semibold">{total.trucks}</Td><Td align="right" className="font-semibold">{total.drivers}</Td><Td align="right" className="font-semibold">{total.orders}</Td><Td align="right" className="font-semibold">{total.loads}</Td>{value && <Td align="right" className="font-semibold">{formatCents(total.ordered_cents)}</Td>}
               </Tr>
             </tbody>
           </Table>

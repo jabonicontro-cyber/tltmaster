@@ -59,7 +59,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
             <Link href="/quotes?status=draft" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{pipe.drafts} </span>not sent yet</Link>
           </StatTile>
           <StatTile icon={<Send />} tone="brand" label="Waiting for an answer" value={pipe.sent} muted={pipe.sent === 0}>
-            <Link href="/quotes?status=sent" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{pipe.sent} sent, </span><span className="tabular">{formatCents(pipe.sentCents)}</span> quoted</Link>
+            <Link href="/quotes?status=sent" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{pipe.sent} sent{pipe.sentCents !== null ? ", " : ""}</span>{pipe.sentCents !== null ? <><span className="tabular">{formatCents(pipe.sentCents)}</span> quoted</> : "see them"}</Link>
           </StatTile>
           <StatTile icon={<CalendarClock />} tone={pipe.expiring ? "amber" : "neutral"} label="Expiring this week" value={pipe.expiring} muted={pipe.expiring === 0}>
             <span className="text-muted"><span className="sr-only">{pipe.expiring} </span>{pipe.expiring ? "follow up before they lapse" : "nothing lapses in 7 days"}</span>

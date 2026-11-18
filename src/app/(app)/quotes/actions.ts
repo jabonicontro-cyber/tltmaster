@@ -8,6 +8,7 @@ import { quoteDraftInput, toSavePayload, type QuoteDraftInput } from "@/lib/sche
 import { uuid } from "@/lib/schemas/common";
 import { QUOTE_STATUSES } from "@/lib/quotes/status";
 import { formatCents } from "@/lib/money";
+import { canSeeSalesTotals } from "@/lib/permissions";
 import { formatDateLong } from "@/lib/dates";
 import { assertPermission, getAccess } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -16,6 +17,7 @@ import { getCustomerQuoteContext } from "@/server/data/customers";
 import { getEmailMode, type EmailMode } from "@/server/email/provider";
 import { env } from "@/server/env";
 import { loadQuoteDocument } from "@/server/quotes/document-loader";
+import { QUOTES_SENT_BY_OFFICE, QuoteTotalsUnavailableError } from "@/lib/quotes/document";
 import { renderQuotePdf } from "@/server/pdf/quote-pdf";
 import type { EffectivePrice } from "@/server/data/types";
 import { deliveryProof, withProof } from "@/server/deliveries";
@@ -27,15 +29,17 @@ function revalidateQuote(id: string) {
   revalidatePath("/command-center");
 }
 
-export async function saveQuoteDraft(input: QuoteDraftInput): Promise<ActionResult<{ quoteId: string; editSeq: number; quoteNumber: string; totalCents: number }>> {
+export async function saveQuoteDraft(input: QuoteDraftInput): Promise<ActionResult<{ quoteId: string; editSeq: number; quoteNumber: string; totalCents: number | null }>> {
   return guard(async () => {
-    await assertPermission("quotes.edit");
+    const access = await assertPermission("quotes.edit");
     const parsed = quoteDraftInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("save_quote_draft", { p_payload: toSavePayload(parsed.data) });
     if (error) return fail(dbErrorMessage(error));
-    const r = data as { quote_id: string; edit_seq: number; quote_number: string; total_cents: number };
+    // The total comes back only for billing or pricing access (SEC7).
+    const r = data as { quote_id: string; edit_seq: number; quote_number: string; total_cents: number | null };
+    if (!canSeeSalesTotals(access)) r.total_cents = null;
     revalidateQuote(r.quote_id);
     if (parsed.data.saveSite) revalidatePath(`/customers/${parsed.data.customerId}`);
     return ok({ quoteId: r.quote_id, editSeq: r.edit_seq, quoteNumber: r.quote_number, totalCents: r.total_cents }, `Quote ${r.quote_number} saved.`);
@@ -78,6 +82,8 @@ export type SendQuoteResult =
 export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise<ActionResult<SendQuoteResult>> {
   return guard(async () => {
     const access = await assertPermission("quotes.send");
+    // The email carries the quote's prices (SEC7): sent by people who see them; the database checks the same.
+    if (!canSeeSalesTotals(access)) return fail(QUOTES_SENT_BY_OFFICE);
     const parsed = emailInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const { quoteId, expectedEditSeq, to, cc, subject, message } = parsed.data;
@@ -87,6 +93,19 @@ export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise
 
     const { data: quote, error: qErr } = await supabase.from("quotes").select("id, current_version_id, status").eq("id", quoteId).maybeSingle();
     if (qErr || !quote) return fail("Quote not found.");
+
+    // The document first, before anything is locked or sent: without its totals nothing goes out (never $0.00).
+    try {
+      if (!(await loadQuoteDocument(quoteId, quote.current_version_id))) return fail("Quote not found.");
+    } catch (e) {
+      if (!(e instanceof QuoteTotalsUnavailableError)) throw e;
+      await supabase.rpc("record_quote_delivery", {
+        p_quote_id: quoteId, p_version_id: quote.current_version_id, p_status: "failed", p_to: to, p_cc: cc, p_subject: subject,
+        p_body: message, p_provider: mode.mode === "preview" ? "preview" : mode.provider.name, p_provider_message_id: null, p_error: e.message, p_document: null,
+      });
+      revalidateQuote(quoteId);
+      return fail(e.message);
+    }
 
     if (mode.mode === "preview") {
       const loaded = await loadQuoteDocument(quoteId, quote.current_version_id);
@@ -140,10 +159,11 @@ export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise
       pdf = await renderQuotePdf(loaded.doc);
       filename = loaded.doc.filename;
     } catch (e) {
-      const msg = `PDF generation failed: ${e instanceof Error ? e.message : "unknown error"}`;
+      const totals = e instanceof QuoteTotalsUnavailableError;
+      const msg = totals ? e.message : `PDF generation failed: ${e instanceof Error ? e.message : "unknown error"}`;
       await record("failed", { error: msg });
       revalidateQuote(quoteId);
-      return fail("The quote PDF could not be generated, so nothing was sent. The draft is still editable. Try again.");
+      return fail(totals ? msg : "The quote PDF could not be generated, so nothing was sent. The draft is still editable. Try again.");
     }
     const document = { filename, sha256: pdf.sha256, byte_size: pdf.byteSize };
 
@@ -188,11 +208,18 @@ export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise
 
 export async function defaultEmailContent(quoteId: string) {
   return guard(async () => {
-    await assertPermission("quotes.send");
+    const access = await assertPermission("quotes.send");
+    if (!canSeeSalesTotals(access)) return fail(QUOTES_SENT_BY_OFFICE);
     const supabase = await createClient();
     const { data: quote } = await supabase.from("quotes").select("id, current_version_id").eq("id", quoteId).maybeSingle();
     if (!quote) return fail("Quote not found.");
-    const loaded = await loadQuoteDocument(quoteId, quote.current_version_id);
+    let loaded: Awaited<ReturnType<typeof loadQuoteDocument>>;
+    try {
+      loaded = await loadQuoteDocument(quoteId, quote.current_version_id);
+    } catch (e) {
+      if (e instanceof QuoteTotalsUnavailableError) return fail(e.message);
+      throw e;
+    }
     if (!loaded) return fail("Quote not found.");
     const { doc, version, customer } = loaded;
     const greeting = version.contact_name ? `Hello ${version.contact_name.split(" ")[0]},` : "Hello,";
@@ -201,7 +228,7 @@ export async function defaultEmailContent(quoteId: string) {
       greeting,
       "",
       `Attached is quote ${doc.quoteNumber}${version.version_no > 1 ? ` (revision ${version.version_no})` : ""}${about}.`,
-      `Total: ${formatCents(version.total_cents)}. This quote is valid until ${formatDateLong(version.valid_until)}.`,
+      `${version.total_cents !== null ? `Total: ${formatCents(version.total_cents)}. ` : ""}This quote is valid until ${formatDateLong(version.valid_until)}.`,
       "",
       "Please reply to this email or call us with any questions or to accept the quote.",
       "",
@@ -246,12 +273,16 @@ export async function reviseQuote(quoteId: string, reason: string): Promise<Acti
   });
 }
 
-export async function setQuoteStatus(quoteId: string, status: string, note: string): Promise<ActionResult> {
+export async function setQuoteStatus(quoteId: string, status: string, note: string, customerPo = ""): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("quotes.status");
     if (!uuid.safeParse(quoteId).success || !(QUOTE_STATUSES as readonly string[]).includes(status)) return fail("Invalid request.");
     const supabase = await createClient();
-    const { error } = await supabase.rpc("set_quote_status", { p_quote_id: quoteId, p_status: status, p_note: note.slice(0, 500) });
+    // Accepting with the customer's PO (BL1, 20261120024730): recorded on the accepted revision first, in one step.
+    const po = customerPo.trim().slice(0, 100);
+    const { error } = status === "accepted" && po
+      ? await supabase.rpc("quote_accept", { p_quote_id: quoteId, p_note: note.slice(0, 500), p_customer_po: po })
+      : await supabase.rpc("set_quote_status", { p_quote_id: quoteId, p_status: status, p_note: note.slice(0, 500) });
     if (error) return fail(dbErrorMessage(error));
     revalidateQuote(quoteId);
     if (status === "accepted") {

@@ -147,6 +147,16 @@ export function canConfirmPrices(access: Pick<Access, "permissions"> | null | un
 }
 
 /**
+ * Who sees order and quote totals, line amounts, revenue estimates and invoice amounts (owner decision 2026-11-17,
+ * master plan §12 SEC7): billing or pricing access. A dispatcher without them still sees and types the per-unit rates.
+ * The database has the same rule (private.sales_money_ok, migration 20261120024700); a demo role preview narrows it
+ * here, because the preview's permissions are the ones in `access`.
+ */
+export function canSeeSalesTotals(access: Pick<Access, "permissions"> | null | undefined): boolean {
+  return can(access, "billing.view") || can(access, "billing.manage") || can(access, "pricing.edit") || can(access, "pricing.override");
+}
+
+/**
  * A price this person types on an order line without a price-list rate is flagged "Price to be checked": they enter
  * orders without orders.edit and cannot decide prices themselves (private.order_price_check_after_save checks the same).
  */

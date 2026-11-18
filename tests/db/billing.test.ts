@@ -7,7 +7,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EXCEPTION_KINDS, READINESS } from "@/lib/billing/rules";
 import { addDays } from "@/lib/dates";
 import { assign, businessToday, fleet, planLoad, scheduledOrder } from "./fixtures";
-import { pgError, pool, TOP_LINE, withSession, type Session } from "./helpers";
+import { pgError, pool, readAsAdmin, TOP_LINE, withSession, type Session } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -268,8 +268,8 @@ describe("billing handoff", () => {
       expect((await pgError(handOff(s, [w.order.id, notReady.id]))).message).toMatch(new RegExp(`Not ready: ${notReady.number} \\(in progress\\)`));
       expect((await pgError(handOff(s, []))).message).toMatch(/Choose at least one order/);
 
-      const orderBefore = (await s.query("select to_jsonb(o) - 'updated_at' as o from public.orders o where id = $1", [w.order.id])).rows[0].o;
-      const linesBefore = (await s.query("select jsonb_agg(to_jsonb(l) order by line_no) as l from public.order_lines l where order_id = $1", [w.order.id])).rows[0].l;
+      const orderBefore = (await readAsAdmin(s, w.office, "select to_jsonb(o) - 'updated_at' as o from public.orders o where id = $1", [w.order.id])).rows[0].o;
+      const linesBefore = (await readAsAdmin(s, w.office, "select jsonb_agg(to_jsonb(l) order by line_no) as l from public.order_lines l where order_id = $1", [w.order.id])).rows[0].l;
 
       const key = randomUUID();
       const r = await handOff(s, [w.order.id], key, "QB batch Oct (test)");
@@ -282,8 +282,8 @@ describe("billing handoff", () => {
 
       expect(await orderStatus(s, w.order.id)).toMatchObject({ readiness: "handed_off", batch_number: r.batch_number, handoff_reference: "QB batch Oct (test)", changed_since_handoff: false });
       // Nothing about the order changed: status, prices, totals and lines.
-      expect((await s.query("select to_jsonb(o) - 'updated_at' as o from public.orders o where id = $1", [w.order.id])).rows[0].o).toEqual(orderBefore);
-      expect((await s.query("select jsonb_agg(to_jsonb(l) order by line_no) as l from public.order_lines l where order_id = $1", [w.order.id])).rows[0].l).toEqual(linesBefore);
+      expect((await readAsAdmin(s, w.office, "select to_jsonb(o) - 'updated_at' as o from public.orders o where id = $1", [w.order.id])).rows[0].o).toEqual(orderBefore);
+      expect((await readAsAdmin(s, w.office, "select jsonb_agg(to_jsonb(l) order by line_no) as l from public.order_lines l where order_id = $1", [w.order.id])).rows[0].l).toEqual(linesBefore);
 
       const snap = (await s.query<{ snapshot: { order: Row; lines: Row[]; tickets: Row[] } }>("select snapshot from public.billing_handoff_orders where order_id = $1", [w.order.id])).rows[0].snapshot;
       expect(snap.order).toMatchObject({ order_number: w.order.number, total_cents: orderBefore.total_cents });

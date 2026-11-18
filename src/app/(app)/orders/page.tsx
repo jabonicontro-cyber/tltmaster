@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { formatScheduleDates, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/lib/orders/status";
-import { canConfirmPrices, canCreateOrders } from "@/lib/permissions";
+import { canConfirmPrices, canCreateOrders, canSeeSalesTotals } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listOrders, ORDER_SCHEDULE_FILTERS, pendingPriceChecks } from "@/server/data/orders";
 import { Notice } from "@/components/ui/states";
@@ -49,6 +49,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   // "Price to check" (financial review M1): orders with a price typed without a price-list rate, for the people who
   // confirm it (pricing.edit, pricing.override or billing.manage). Null when it cannot be read: no filter, no badge.
   const checker = canConfirmPrices(access);
+  // Order totals only for billing or pricing access (SEC7); the list's totals are empty for everyone else.
+  const showTotals = canSeeSalesTotals(access);
   const priceChecks = checker ? await pendingPriceChecks() : null;
   const priceCheckIds = new Set((priceChecks ?? []).map((o) => o.id));
   const priceFilter = sp.price === "check" && priceChecks ? [...priceCheckIds] : undefined;
@@ -176,7 +178,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <p className="mt-1 truncate text-sm text-muted">{[o.project_name || o.site_label || o.site_line1, o.material_summary].filter(Boolean).join(" · ") || "–"}</p>
                     <div className="mt-1 flex items-center justify-between gap-3 text-sm">
                       <span className={scheduled ? "text-ink" : "text-muted"}>{scheduled || "Not scheduled"}</span>
-                      <span className="font-semibold tabular">{formatCents(o.total_cents)}</span>
+                      {showTotals && o.total_cents !== null && <span className="font-semibold tabular">{formatCents(o.total_cents)}</span>}
                     </div>
                   </li>
                 );
@@ -192,7 +194,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <Th className="hidden sm:table-cell">Delivery</Th>
                     <Th className="hidden lg:table-cell">Source</Th>
                     <Th>Status</Th>
-                    <Th align="right">Total</Th>
+                    {showTotals && <Th align="right">Total</Th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -257,7 +259,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                           <OrderStatusBadge status={o.status} />
                           {o.status === "on_hold" && o.status_note && <div className="mt-1 max-w-40 truncate text-xs text-muted" title={o.status_note}>{o.status_note}</div>}
                         </Td>
-                        <Td align="right" className="font-semibold whitespace-nowrap">{formatCents(o.total_cents)}</Td>
+                        {showTotals && <Td align="right" className="font-semibold whitespace-nowrap">{o.total_cents !== null ? formatCents(o.total_cents) : "–"}</Td>}
                       </Tr>
                     );
                   })}

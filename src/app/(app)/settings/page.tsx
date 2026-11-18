@@ -56,7 +56,8 @@ import { waitTimeSettings } from "@/server/data/wait-times";
 import { WaitTimeForm } from "@/components/settings/wait-time-form";
 import { env } from "@/server/env";
 import { TelematicsSettingsForm } from "@/components/fleet/telematics";
-import { saveBillingTolerance, saveCreditHoldSettings, saveInvoicingSettings } from "../billing/invoices/actions";
+import { saveBillingTolerance, saveCreditHoldSettings, saveInvoiceDetails } from "../billing/invoices/actions";
+import { InvoicingChoice } from "@/components/billing/invoicing-choice";
 import { saveTruckHoursSettings } from "../dispatch/truck-day-actions";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -408,28 +409,29 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <>
         <CardHeader
           title="Invoicing"
-          description="Who issues your invoices. QuickBooks: handed-off orders are sent to QuickBooks and invoiced there. Taviron: you create, issue and email invoices here, with your logo and colour, and record payments; nothing goes to QuickBooks for those orders."
+          description="Who sends your invoices, and what goes on them. Each part below has its own Save."
         />
         <CardBody>
           {!inv.installed ? (
             <p className="text-sm text-muted">Invoicing needs a database update that has not been installed yet.</p>
           ) : (
-            <form action={saveInvoicingSettings} className="max-w-xl space-y-4" aria-label="Invoicing">
-              <fieldset className="space-y-2" disabled={!edit}>
-                <legend className="mb-1 text-sm font-medium">Invoices are issued by</legend>
-                {([["quickbooks", "QuickBooks", "Send handed-off orders to QuickBooks (Billing → Businesses and QuickBooks)."], ["taviron", "Taviron", "Create, issue and email invoices from Taviron and track what each customer owes."]] as const).map(([v, label, hint]) => (
-                  <label key={v} className="flex items-start gap-3 rounded-control border border-line p-3 has-[:checked]:border-strong has-[:checked]:bg-surface">
-                    <input type="radio" name="issuer" value={v} defaultChecked={inv.issuer === v} className="mt-1 size-4 accent-brand" />
-                    <span><span className="block font-medium">{label}</span><span className="block text-sm text-muted">{hint}</span></span>
-                  </label>
-                ))}
-              </fieldset>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Payment terms (days)" htmlFor="terms_days" hint="0 = due on receipt"><Input id="terms_days" name="terms_days" inputMode="numeric" defaultValue={String(inv.termsDays)} disabled={!edit} /></Field>
-              </div>
-              <Field label="Footer on invoices" htmlFor="footer" hint="For example how to pay, or a thank-you"><Textarea id="footer" name="footer" rows={3} maxLength={500} defaultValue={inv.footer} disabled={!edit} /></Field>
-              {edit && <SubmitButton>Save</SubmitButton>}
-            </form>
+            <>
+              {/* One clear Save per part (owner 2026-11-17, INV1): the choice, then the invoice details. */}
+              {edit ? (
+                <InvoicingChoice bare canChoose back="/settings?tab=invoicing" current={inv.chosen ? inv.issuer : null} asked={!inv.chosen} />
+              ) : (
+                <p className="text-sm text-muted">{inv.chosen ? `Invoices are sent by ${inv.issuer === "taviron" ? "Taviron" : "QuickBooks"}.` : "Your company hasn't chosen who sends invoices yet."} The owner or the office changes this.</p>
+              )}
+              <form action={saveInvoiceDetails} className="mt-8 max-w-xl space-y-4 border-t border-line pt-6" aria-label="Invoice details">
+                <h3 className="text-base font-semibold text-ink">Invoice details</h3>
+                <p className="text-sm text-muted">Used on invoices Taviron sends. Invoices already issued keep theirs.</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Payment terms (days)" htmlFor="terms_days" hint="0 = due on receipt"><Input id="terms_days" name="terms_days" inputMode="numeric" defaultValue={String(inv.termsDays)} disabled={!edit} /></Field>
+                </div>
+                <Field label="Footer on invoices" htmlFor="footer" hint="For example how to pay, or a thank-you"><Textarea id="footer" name="footer" rows={3} maxLength={500} defaultValue={inv.footer} disabled={!edit} /></Field>
+                {edit && <SubmitButton>Save</SubmitButton>}
+              </form>
+            </>
           )}
           {!credit.error && (
             <form action={saveCreditHoldSettings} className="mt-8 max-w-xl space-y-3 border-t border-line pt-6" aria-label="Credit holds">

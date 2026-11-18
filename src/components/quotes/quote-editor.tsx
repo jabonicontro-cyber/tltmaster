@@ -119,6 +119,11 @@ interface Props {
   canSetTaxDefault?: boolean;
   /** Customers on credit hold: marked in the customer picker (orders). */
   heldCustomers?: string[];
+  /**
+   * Show amounts and totals (SEC7, owner 2026-11-17): only for billing or pricing access. A dispatcher entering an order
+   * sees and types the per-unit rates; the amounts and totals are left out.
+   */
+  showTotals?: boolean;
 }
 
 let keySeq = 0;
@@ -139,7 +144,7 @@ function toCalcLine(l: EditorLine): CalcLine {
   };
 }
 
-export function QuoteEditor({ industry, initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote", taxLocked = false, typedPriceChecked = false, canSetTaxDefault = false, heldCustomers = [] }: Props) {
+export function QuoteEditor({ industry, initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote", taxLocked = false, typedPriceChecked = false, canSetTaxDefault = false, heldCustomers = [], showTotals = true }: Props) {
   const router = useRouter();
   const isOrder = mode === "order";
   const words = vocabulary(industry);
@@ -789,10 +794,12 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                       </div>
                     )}
 
-                    <div className="col-span-6 flex flex-col items-end sm:col-span-3 lg:col-span-2">
-                      <span className="mb-1 block text-xs font-medium text-muted">Amount</span>
-                      <span className={cn("flex h-10 items-center text-lg font-bold tabular", amount < 0 && "text-green-800")}>{formatCents(amount)}</span>
-                    </div>
+                    {showTotals && (
+                      <div className="col-span-6 flex flex-col items-end sm:col-span-3 lg:col-span-2">
+                        <span className="mb-1 block text-xs font-medium text-muted">Amount</span>
+                        <span className={cn("flex h-10 items-center text-lg font-bold tabular", amount < 0 && "text-green-800")}>{formatCents(amount)}</span>
+                      </div>
+                    )}
 
                     {haulDiffers && material && (
                       <p className="col-span-12 flex flex-wrap items-center gap-x-2 text-sm text-amber-800" role="status" data-testid="haul-qty-differs">
@@ -876,6 +883,15 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
             </Field>
           </CardBody>
         </Card>
+        {!showTotals ? (
+          <Card>
+            <CardHeader title="Totals" />
+            <CardBody>
+              <p className="text-sm text-muted" data-testid="editor-totals-hidden">The office sees the order totals. Check the price per unit on each line.</p>
+              {taxLocked && <p className="mt-2 text-sm text-muted">Sales tax follows the customer and the company setting.</p>}
+            </CardBody>
+          </Card>
+        ) : (
         <Card>
           <CardHeader title="Totals" description="Final totals are calculated by the server when you save." />
           <CardBody>
@@ -914,6 +930,7 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
             )}
           </CardBody>
         </Card>
+        )}
       </div>
 
       {blockedByPermission && (
@@ -929,7 +946,7 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-muted">
             {dirty ? <span className="font-semibold text-amber-800">Unsaved changes</span> : state.quoteId ? "All changes saved" : `New ${docLabel}: not saved yet`}
-            <span className="ml-3 font-bold text-ink tabular">Total {formatCents(totals.totalCents)}</span>
+            {showTotals && <span className="ml-3 font-bold text-ink tabular">Total {formatCents(totals.totalCents)}</span>}
           </div>
           <div className="flex gap-2">
             <Link href={state.quoteId ? `${basePath}/${state.quoteId}` : basePath} className={buttonClasses("ghost")}>

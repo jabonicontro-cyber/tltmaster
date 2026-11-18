@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { pgError, pool, sampleIds, saveQuote, withDeliveryProof, withSession, type LineInput, type Session } from "./helpers";
+import { pgError, pool, readAsAdmin, sampleIds, saveQuote, withDeliveryProof, withSession, type LineInput, type Session } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -60,7 +60,7 @@ describe("quote creation and calculation", () => {
       // 22.5 × $10.00 = $225.00 (taxable) + 22.5 × $5.00 = $112.50; tax 7% of 225 = $15.75
       expect(r.total_cents).toBe(22500 + 11250 + 1575);
 
-      const v = await s.query("select * from public.quote_versions where id = $1", [r.version_id]);
+      const v = await readAsAdmin(s, office, "select * from public.quote_versions where id = $1", [r.version_id]);
       expect(v.rows[0]).toMatchObject({
         subtotal_cents: "33750",
         taxable_cents: "22500",
@@ -68,7 +68,7 @@ describe("quote creation and calculation", () => {
         total_cents: "35325",
         tax_rate_bp: 700,
       });
-      const lines = await s.query("select * from public.quote_lines where quote_version_id = $1 order by line_no", [r.version_id]);
+      const lines = await readAsAdmin(s, office, "select * from public.quote_lines where quote_version_id = $1 order by line_no", [r.version_id]);
       expect(lines.rows.map((l) => [l.line_no, l.price_source, l.catalog_rate_cents, l.unit_label])).toEqual([
         [1, "standard", "1000", "Tons"],
         [2, "standard", "500", "Tons"],
@@ -134,7 +134,7 @@ describe("quote creation and calculation", () => {
       });
       // 22.5 × 9.50 = 213.75; 10% discount = 21.375 → 21.38
       expect(r.total_cents).toBe(21375 - 2138);
-      const lines = await s.query("select price_source, amount_cents from public.quote_lines where quote_version_id = $1 order by line_no", [r.version_id]);
+      const lines = await s.query("select l.price_source, a.amount_cents from public.quote_lines l join public.quote_line_amounts(array[$1::uuid]) a on a.line_id = l.id where l.quote_version_id = $1 order by l.line_no", [r.version_id]);
       expect(lines.rows).toEqual([
         { price_source: "override", amount_cents: "21375" },
         { price_source: "manual", amount_cents: "-2138" },
@@ -264,7 +264,7 @@ describe("quote versions, sending and status", () => {
       expect(edit.total_cents).toBe(40000 + 2800);
 
       const versions = await s.query(
-        "select version_no, total_cents, locked_at is not null as locked, revision_reason from public.quote_versions where quote_id = $1 order by version_no",
+        "select v.version_no, t.total_cents, v.locked_at is not null as locked, v.revision_reason from public.quote_versions v join public.quote_totals(array(select id from public.quote_versions where quote_id = $1)) t on t.version_id = v.id where v.quote_id = $1 order by v.version_no",
         [r.quote_id],
       );
       expect(versions.rows).toEqual([

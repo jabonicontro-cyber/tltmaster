@@ -16,6 +16,7 @@ import type {
 import { QUOTE_STATUSES } from "@/lib/quotes/status";
 import { sortByActivity, type QuoteActivity } from "@/lib/quotes/activity";
 import { QUOTE_HISTORY_ACTIONS, type QuoteAuditEntry } from "@/lib/quotes/history";
+import { QUOTE_LINE_COLUMNS, QUOTE_VERSION_COLUMNS, quoteLineAmounts, quoteTotals, salesHistory, seesSalesTotals, withAmounts, withTotals, type SalesTotalsOrNull } from "./sales-money";
 
 export interface QuoteFilters {
   q?: string;
@@ -87,12 +88,13 @@ export async function quotePipeline(today: string, weekEnd: string) {
   const supabase = await createClient();
   const { data, error } = await readAllRows(() => supabase.from("quote_list").select("status, total_cents, valid_until").in("status", ["draft", "sent"]).order("id"));
   if (error) return null;
-  const rows = (data ?? []) as Array<{ status: string; total_cents: number; valid_until: string }>;
+  const rows = (data ?? []) as Array<{ status: string; total_cents: number | null; valid_until: string }>;
   const sent = rows.filter((r) => r.status === "sent");
   return {
     drafts: rows.length - sent.length,
     sent: sent.length,
-    sentCents: sent.reduce((n, r) => n + (r.total_cents ?? 0), 0),
+    // null without billing or pricing access (SEC7: the list's totals are empty for them).
+    sentCents: !(await seesSalesTotals()) ? null : sent.reduce((n, r) => n + (r.total_cents ?? 0), 0),
     expiring: sent.filter((r) => r.valid_until >= today && r.valid_until <= weekEnd).length,
   };
 }
@@ -128,26 +130,29 @@ export async function getQuoteDetail(id: string) {
 
   const [customer, versions, lines, events, deliveries, names, audit] = await Promise.all([
     supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", q.customer_id).single(),
-    supabase.from("quote_versions").select("*").eq("quote_id", id).order("version_no", { ascending: false }),
-    supabase.from("quote_lines").select("*").eq("quote_version_id", q.current_version_id).order("line_no"),
+    supabase.from("quote_versions").select(QUOTE_VERSION_COLUMNS).eq("quote_id", id).order("version_no", { ascending: false }),
+    supabase.from("quote_lines").select(QUOTE_LINE_COLUMNS).eq("quote_version_id", q.current_version_id).order("line_no"),
     supabase.from("quote_status_events").select("*").eq("quote_id", id).order("occurred_at", { ascending: false }),
     supabase.from("email_deliveries").select("*, documents(filename, sha256, byte_size)").eq("quote_id", id).order("created_at", { ascending: false }),
     getUserNames(),
     // Edits and new revisions for the History (WK1), from the audit log with the person's own session: owners
     // (audit.view), and everyone with quotes.view once 20261120019000 is installed. Nothing (not an error) otherwise.
-    supabase.from("audit_events").select("id, occurred_at, actor_id, action, summary, details").eq("entity_type", "quote").eq("entity_id", id)
-      .in("action", [...QUOTE_HISTORY_ACTIONS]).order("occurred_at", { ascending: false }).limit(200),
+    // Through sales_history (SEC7, 20261120024700): totals taken out for people without billing or pricing access.
+    salesHistory("quote", id).then((rows) => ({ data: rows.filter((r) => (QUOTE_HISTORY_ACTIONS as readonly string[]).includes(r.action)), error: null })),
   ]);
   for (const r of [customer, versions, lines, events, deliveries]) {
     if (r.error) throw new Error(`Could not load quote: ${r.error.message}`);
   }
-  const allVersions = (versions.data ?? []) as QuoteVersionRow[];
+  // Totals and line amounts only for billing or pricing access (SEC7); everyone with quotes.view sees the rates.
+  const rawVersions = (versions.data ?? []) as unknown as Array<Omit<QuoteVersionRow, keyof SalesTotalsOrNull>>;
+  const [totals, amounts] = await Promise.all([quoteTotals(rawVersions.map((v) => v.id)), quoteLineAmounts([q.current_version_id])]);
+  const allVersions = rawVersions.map((v) => withTotals(v, totals)) as QuoteVersionRow[];
   return {
     quote: q,
     customer: customer.data as unknown as CustomerRow,
     versions: allVersions,
     current: allVersions.find((v) => v.id === q.current_version_id)!,
-    lines: (lines.data ?? []) as QuoteLineRow[],
+    lines: withAmounts((lines.data ?? []) as unknown as Array<Omit<QuoteLineRow, "amount_cents">>, amounts) as QuoteLineRow[],
     events: (events.data ?? []) as StatusEventRow[],
     deliveries: (deliveries.data ?? []) as DeliveryRow[],
     names,
@@ -159,18 +164,19 @@ export async function getQuoteVersion(quoteId: string, versionId: string) {
   const supabase = await createClient();
   const [quote, version, lines] = await Promise.all([
     supabase.from("quotes").select("*").eq("id", quoteId).maybeSingle(),
-    supabase.from("quote_versions").select("*").eq("id", versionId).eq("quote_id", quoteId).maybeSingle(),
-    supabase.from("quote_lines").select("*").eq("quote_version_id", versionId).order("line_no"),
+    supabase.from("quote_versions").select(QUOTE_VERSION_COLUMNS).eq("id", versionId).eq("quote_id", quoteId).maybeSingle(),
+    supabase.from("quote_lines").select(QUOTE_LINE_COLUMNS).eq("quote_version_id", versionId).order("line_no"),
   ]);
   if (quote.error || version.error || lines.error) throw new Error("Could not load quote version.");
   if (!quote.data || !version.data) return null;
   const q = quote.data as QuoteRow;
   const { data: customer, error } = await supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", q.customer_id).single();
   if (error) throw new Error("Could not load customer.");
+  const [totals, amounts] = await Promise.all([quoteTotals([versionId]), quoteLineAmounts([versionId])]);
   return {
     quote: q,
-    version: version.data as QuoteVersionRow,
-    lines: (lines.data ?? []) as QuoteLineRow[],
+    version: withTotals(version.data as unknown as Omit<QuoteVersionRow, keyof SalesTotalsOrNull>, totals) as QuoteVersionRow,
+    lines: withAmounts((lines.data ?? []) as unknown as Array<Omit<QuoteLineRow, "amount_cents">>, amounts) as QuoteLineRow[],
     customer: customer as unknown as CustomerRow,
   };
 }

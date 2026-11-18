@@ -23,7 +23,8 @@ export interface ReadyOrder {
   service_start: string | null;
   service_end: string | null;
   tickets_accepted: number;
-  total_cents: number;
+  /** null when it could not be read (shown as not available, never added as zero). */
+  total_cents: number | null;
   acknowledgment_reason: string | null;
 }
 
@@ -79,13 +80,13 @@ export function HandOffForm({ orders, canManage, taviron = false }: { orders: Re
   const all = orders.length > 0 && selected.size === orders.length;
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const chosen = orders.filter((o) => selected.has(o.order_id));
-  const total = chosen.reduce((n, o) => n + o.total_cents, 0);
+  const total = chosen.some((o) => o.total_cents === null) ? null : chosen.reduce((n, o) => n + (o.total_cents ?? 0), 0);
 
   return (
     <>
       {canManage && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3 sm:px-6">
-          <p className="text-sm text-muted">{selected.size ? `${selected.size} selected · ${formatCents(total)} order total` : "Select the orders to hand off for billing."}</p>
+          <p className="text-sm text-muted">{selected.size ? `${selected.size} selected · ${total === null ? "order total not available" : `${formatCents(total)} order total`}` : "Select the orders to hand off for billing."}</p>
           <Button icon={<Send className="size-4" />} disabled={!selected.size} onClick={() => { setKey(crypto.randomUUID()); setOpen(true); }}>
             Hand off selected
           </Button>
@@ -121,7 +122,7 @@ export function HandOffForm({ orders, canManage, taviron = false }: { orders: Re
                 </Td>
                 <Td className="hidden sm:table-cell tabular">{formatDate(o.service_start)}{o.service_end && o.service_end !== o.service_start ? ` – ${formatDate(o.service_end)}` : ""}</Td>
                 <Td className="hidden md:table-cell tabular">{o.tickets_accepted} accepted</Td>
-                <Td align="right" className="tabular">{formatCents(o.total_cents)}</Td>
+                <Td align="right" className="tabular">{o.total_cents === null ? <span className="text-muted">Not available</span> : formatCents(o.total_cents)}</Td>
               </Tr>
             ))}
           </tbody>

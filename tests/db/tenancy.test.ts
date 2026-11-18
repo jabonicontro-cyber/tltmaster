@@ -46,6 +46,7 @@ const TENANT_TABLES = [
   "shift_patterns", "shift_pattern_days", "shift_changes", "schedule_events", "assignment_shift_overrides",
   "billing_entities", "billing_entity_rules",
   "accounting_connections", "accounting_connection_secrets", "accounting_customer_links", "accounting_invoice_sends",
+  "ticket_mistake_reports",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -333,6 +334,31 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // SEC5 (20261120019800): fuel_purchase_amounts needs billing.view, require_company(), and only receipts the person
   // reads anyway (fleet.view / accounting.view, or a driver's own); no company id argument.
   "public.fuel_purchase_amounts",
+  // SEC7 (20261120024700): sales_money_ok reads the caller's own permissions; the visible_* helpers return only rows with
+  // company_id = current_company_id() and nothing without money access; order_totals / order_line_amounts /
+  // quote_totals / quote_line_amounts need orders.view or quotes.view plus money access, require_company(), and the
+  // order's base for base-limited people; sales_history needs orders.view (and the order's base) or quotes.view,
+  // require_company(), billing entries only with billing.view, totals taken out without money access. No company id
+  // argument anywhere.
+  "private.sales_money_ok", "private.visible_order_totals", "private.visible_order_line_amounts", "private.visible_quote_totals",
+  "public.order_totals", "public.order_line_amounts", "public.quote_totals", "public.quote_line_amounts", "public.sales_history",
+  // INV1 (20261120024710): invoicing_choose_issuer / invoicing_save_details need billing.manage, require_company(), write
+  // only the caller's company row; invoicing_demo_chosen only marks a demo company's own new row chosen.
+  "public.invoicing_choose_issuer", "public.invoicing_save_details", "private.invoicing_demo_chosen",
+  // TM1 (20261120024720): ticket_mistake_report / ticket_mistake_photo_begin go through portal_driver() (driver.portal,
+  // the caller's own linked driver in require_company()) and only the driver's own tickets and reports;
+  // ticket_mistake_photo_path needs tickets.view or the report's own driver, require_company(); ticket_mistake_resolve
+  // needs tickets.review, require_company(); ticket_mistake_corrected touches only reports of the new revision's
+  // company and ticket number.
+  "public.ticket_mistake_report", "public.ticket_mistake_photo_begin", "public.ticket_mistake_photo_path",
+  "public.ticket_mistake_resolve", "private.ticket_mistake_corrected", "public.demo_ticket_mistake_sample",
+  "private.ticket_mistake_base_ok",
+  // Opportunity values (owner 2026-11-18, 20261120024700): crm_opportunity_values needs customers.view and money access,
+  // require_company(); crm_value_guard refuses a value change without money access.
+  "public.crm_opportunity_values", "private.crm_value_guard",
+  // BL1 (20261120024730): quote_accept needs quotes.status, the quote in require_company(), fills only an empty PO on
+  // that quote's current revision, then set_quote_status.
+  "public.quote_accept",
   // EX1 (20261120024500): the data download. Every function starts with private.data_export_company(): require_company(),
   // an active owner membership there, aal2, billing.view, never a support visit; rows only where company_id = that
   // company, tables only from the fixed list (private.data_export_tables); no company id argument.

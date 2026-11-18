@@ -7,6 +7,7 @@ import { createClient } from "@/server/supabase/server";
 import { businessToday, getSettings } from "./settings";
 import { hrefShown } from "@/lib/modules";
 import { getModulesOff } from "@/server/modules";
+import { invoicingSettings } from "./invoices";
 
 export interface GettingStartedView {
   role: ChecklistRole;
@@ -47,6 +48,12 @@ export async function loadGettingStarted(access: Access, place: ChecklistPlace, 
       has("customers.view") ? any(supabase.from("customers").select("id").limit(1)) : null,
       has("orders.view") ? any(supabase.from("orders").select("id").limit(1)) : null,
     ]);
+    // Who sends the invoices (INV1): asked only while Billing is switched on.
+    const billingOn = hrefShown("/billing", await getModulesOff());
+    if (billingOn && has("billing.view")) {
+      const inv = await invoicingSettings().catch(() => null);
+      facts.invoicingChosen = inv && inv.installed ? inv.chosen : null;
+    }
     Object.assign(facts, {
       companyPhone: settings ? Boolean(settings.phone?.trim()) : null,
       companyLogo: settings ? Boolean(settings.has_logo) : null,

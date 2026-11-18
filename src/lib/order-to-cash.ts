@@ -3,11 +3,13 @@
 // database already computes (billing_order_status: order status, fulfillment gap, tickets, readiness, handoff), and
 // says what needs attention, why, which team acts next and where. It never changes an order and has no business rules
 // of its own: the reasons and next steps come from src/lib/billing/rules.ts. Invoices and payments are not built
-// (master plan §9 Q9, Q10, Q15) and are shown as such.
+// (master plan §9 Q9, Q10, Q15) and are shown as such. Since O2C1 (owner 2026-11-17: "Order to Cash = a read-only
+// overview of every order from delivery to payment, linked from Billing") an order whose invoice Taviron sends goes on
+// to Invoiced and Paid, from that invoice; with QuickBooks the view ends at Handed off.
 
 import { FULFILLMENT_GAP_LABELS, readinessExplanation, type FulfillmentGap, type Readiness } from "@/lib/billing/rules";
 
-export const STAGES = ["scheduling", "dispatch", "delivery", "tickets", "review", "ready", "handed_off"] as const;
+export const STAGES = ["scheduling", "dispatch", "delivery", "tickets", "review", "ready", "handed_off", "invoiced", "paid"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export const STAGE_LABELS: Record<Stage, string> = {
@@ -18,6 +20,8 @@ export const STAGE_LABELS: Record<Stage, string> = {
   review: "Billing review",
   ready: "Ready to bill",
   handed_off: "Handed off",
+  invoiced: "Invoiced",
+  paid: "Paid",
 };
 
 /** The team whose permission covers the next action (no individual is assigned here). */
@@ -33,7 +37,8 @@ export interface OrderRow {
   scheduled_start: string | null;
   order_date: string;
   completed_at: string | null;
-  total_cents: number;
+  /** null when it could not be read (never counted as zero). */
+  total_cents: number | null;
   loads_total: number;
   loads_missing: number;
   loads_not_due: number;
@@ -46,6 +51,8 @@ export interface OrderRow {
   handed_off_at: string | null;
   changed_since_handoff: boolean;
   batch_number: string | null;
+  /** The Taviron invoice of a handed-off order (O2C1), when the company sends its invoices from Taviron. */
+  invoice?: { id: string; number: string | null; status: "draft" | "issued" | "void"; paid: boolean; overdue: boolean; neverSent: boolean } | null;
 }
 
 export interface Lifecycle {
@@ -62,6 +69,15 @@ export function lifecycle(o: OrderRow): Lifecycle {
   const billing = `/billing/orders/${o.order_id}`;
   if (o.status === "confirmed" && !o.scheduled_start) {
     return { stage: "scheduling", attention: true, why: "Confirmed, but no delivery date is set.", next: "Schedule the order", owner: "dispatch", href: "/dispatch#needs-scheduling" };
+  }
+  if (o.readiness === "handed_off" && !o.changed_since_handoff && o.invoice && o.invoice.status !== "void") {
+    const inv = `/billing/invoices/${o.invoice.id}`;
+    const name = o.invoice.number ? `Invoice ${o.invoice.number}` : "The invoice";
+    if (o.invoice.status === "draft") return { stage: "handed_off", attention: true, why: "Invoice draft made, not issued yet.", next: "Issue the invoice", owner: "billing", href: inv };
+    if (o.invoice.paid) return { stage: "paid", attention: false, why: `${name} is paid in full.`, next: "Nothing to do", owner: "none", href: inv };
+    if (o.invoice.neverSent) return { stage: "invoiced", attention: true, why: `${name} is past due and was never sent.`, next: "Send it now or mark it as sent", owner: "billing", href: inv };
+    if (o.invoice.overdue) return { stage: "invoiced", attention: true, why: `${name} is past due.`, next: "Follow up on the payment", owner: "billing", href: inv };
+    return { stage: "invoiced", attention: false, why: `${name} is sent and not yet due.`, next: "Wait for the payment", owner: "none", href: inv };
   }
   if (o.readiness === "handed_off") {
     return o.changed_since_handoff
@@ -90,10 +106,11 @@ export function lifecycle(o: OrderRow): Lifecycle {
 }
 
 /** Counts per stage and how many need attention, for the summary row. */
-export function summarize(rows: OrderRow[]): { stage: Stage; total: number; attention: number; cents: number }[] {
+/** cents is null when any order's total at that stage could not be read (the page says "value not available"). */
+export function summarize(rows: OrderRow[]): { stage: Stage; total: number; attention: number; cents: number | null }[] {
   return STAGES.map((stage) => {
     const here = rows.map((o) => ({ o, l: lifecycle(o) })).filter((x) => x.l.stage === stage);
-    return { stage, total: here.length, attention: here.filter((x) => x.l.attention).length, cents: here.reduce((s, x) => s + Number(x.o.total_cents ?? 0), 0) };
+    return { stage, total: here.length, attention: here.filter((x) => x.l.attention).length, cents: here.some((x) => x.o.total_cents === null) ? null : here.reduce((s, x) => s + Number(x.o.total_cents), 0) };
   });
 }
 

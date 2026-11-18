@@ -5,7 +5,8 @@
 import { daysBetween } from "@/lib/billing/invoices";
 import { addDays } from "@/lib/dates";
 
-export interface OrderPoint { customerId: string; customerName: string; orderDate: string; totalCents: number }
+/** totalCents null: not read (no billing or pricing access, or it could not be read); the signal then counts orders only. */
+export interface OrderPoint { customerId: string; customerName: string; orderDate: string; totalCents: number | null }
 export interface PaidInvoice { customerId: string; issueDate: string; paidDate: string }
 export interface OpenInvoice { id: string; number: string | null; customerId: string; customerName: string; issueDate: string; dueDate: string | null; balanceCents: number }
 
@@ -14,8 +15,9 @@ export interface CustomerSignal {
   customerName: string;
   kind: "ordering_less" | "paying_slower";
   detail: string;
-  /** Monthly order value at stake (ordering) or the open balance (paying); for sorting. */
-  weightCents: number;
+  /** Monthly order value at stake (ordering) or the open balance (paying); for sorting. null: the order values were not
+   * read, so no dollar figure is shown (the order counts still are). */
+  weightCents: number | null;
 }
 
 /**
@@ -25,11 +27,12 @@ export interface CustomerSignal {
 export function orderingLess(orders: OrderPoint[], today: string): CustomerSignal[] {
   const recentFrom = addDays(today, -29);
   const baseFrom = addDays(today, -119);
-  const by = new Map<string, { name: string; recent: number; recentCents: number; base: number; baseCents: number }>();
+  const by = new Map<string, { name: string; recent: number; recentCents: number; base: number; baseCents: number; unknown: boolean }>();
   for (const o of orders) {
     if (o.orderDate < baseFrom || o.orderDate > today) continue;
-    const g = by.get(o.customerId) ?? { name: o.customerName, recent: 0, recentCents: 0, base: 0, baseCents: 0 };
-    if (o.orderDate >= recentFrom) { g.recent += 1; g.recentCents += o.totalCents; } else { g.base += 1; g.baseCents += o.totalCents; }
+    const g = by.get(o.customerId) ?? { name: o.customerName, recent: 0, recentCents: 0, base: 0, baseCents: 0, unknown: false };
+    if (o.totalCents === null) g.unknown = true;
+    if (o.orderDate >= recentFrom) { g.recent += 1; g.recentCents += o.totalCents ?? 0; } else { g.base += 1; g.baseCents += o.totalCents ?? 0; }
     by.set(o.customerId, g);
   }
   const out: CustomerSignal[] = [];
@@ -38,11 +41,11 @@ export function orderingLess(orders: OrderPoint[], today: string): CustomerSigna
     const usualCents = g.baseCents / 3;
     if (usual < 2 || g.recent >= usual / 2) continue;
     out.push({
-      customerId: id, customerName: g.name, kind: "ordering_less", weightCents: Math.round(usualCents - g.recentCents),
+      customerId: id, customerName: g.name, kind: "ordering_less", weightCents: g.unknown ? null : Math.round(usualCents - g.recentCents),
       detail: `${g.recent} order${g.recent === 1 ? "" : "s"} in the last 30 days; usually about ${Math.round(usual)} a month.`,
     });
   }
-  return out.sort((a, b) => b.weightCents - a.weightCents);
+  return out.sort((a, b) => (b.weightCents ?? -1) - (a.weightCents ?? -1) || a.customerName.localeCompare(b.customerName));
 }
 
 /** Days from issue to payment for each paid invoice. */
@@ -71,7 +74,7 @@ export function payingSlower(paid: PaidInvoice[], open: OpenInvoice[]): Customer
     const name = open.find((o) => o.customerId === id)?.customerName ?? null;
     out.push({ customerId: id, customerName: name ?? "", kind: "paying_slower", weightCents: owed, detail: `Last 2 invoices paid in about ${Math.round(recent)} days; before that about ${Math.round(before)} days.` });
   }
-  return out.sort((a, b) => b.weightCents - a.weightCents);
+  return out.sort((a, b) => (b.weightCents ?? 0) - (a.weightCents ?? 0));
 }
 
 export interface ForecastWeek { from: string; to: string; cents: number; invoices: number }

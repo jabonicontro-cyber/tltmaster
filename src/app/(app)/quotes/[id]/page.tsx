@@ -72,7 +72,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         description={
           <>
             <Link href={`/customers/${customer.id}`} className="font-semibold text-ink hover:underline">{customer.name}</Link>
-            {current.project_name ? ` · ${current.project_name}` : ""} · Total <strong className="text-ink">{formatCents(current.total_cents)}</strong>
+            {current.project_name ? ` · ${current.project_name}` : ""}
+            {/* Totals only for billing or pricing access (SEC7); the rates are on the lines for everyone. */}
+            {current.total_cents !== null && <> · Total <strong className="text-ink">{formatCents(current.total_cents)}</strong></>}
           </>
         }
       />
@@ -89,6 +91,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           order={order}
           emailed={deliveries.some((d) => d.channel !== "manual" && (d.status === "sent" || d.status === "failed"))}
           quotesOnly={quotesOnly}
+          poMissing={customer.po_required && !current.customer_po.trim() ? { instructions: customer.po_instructions ?? "" } : null}
         />
       </div>
 
@@ -163,14 +166,20 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           <Card>
             <CardHeader title={`Line items: revision ${current.version_no}`} />
             <QuoteLinesTable lines={lines} />
-            <div className="flex justify-end border-t border-line px-5 py-3 sm:px-6">
-              <dl className="w-full max-w-xs space-y-1 text-[15px]">
-                <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular">{formatCents(current.subtotal_cents)}</dd></div>
-                {current.discount_cents > 0 && <div className="flex justify-between"><dt className="text-muted">Discounts</dt><dd className="text-green-800 tabular">-{formatCents(current.discount_cents)}</dd></div>}
-                <div className="flex justify-between"><dt className="text-muted">Tax ({formatBp(current.tax_rate_bp)})</dt><dd className="tabular">{formatCents(current.tax_cents)}</dd></div>
-                <div className="flex justify-between border-t-2 border-strong pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(current.total_cents)}</dd></div>
-              </dl>
-            </div>
+            {current.total_cents !== null ? (
+              <div className="flex justify-end border-t border-line px-5 py-3 sm:px-6">
+                <dl className="w-full max-w-xs space-y-1 text-[15px]">
+                  <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular">{formatCents(current.subtotal_cents ?? 0)}</dd></div>
+                  {(current.discount_cents ?? 0) > 0 && <div className="flex justify-between"><dt className="text-muted">Discounts</dt><dd className="text-green-800 tabular">-{formatCents(current.discount_cents ?? 0)}</dd></div>}
+                  <div className="flex justify-between"><dt className="text-muted">Tax ({formatBp(current.tax_rate_bp)})</dt><dd className="tabular">{formatCents(current.tax_cents ?? 0)}</dd></div>
+                  <div className="flex justify-between border-t-2 border-strong pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(current.total_cents)}</dd></div>
+                </dl>
+              </div>
+            ) : (
+              <p className="border-t border-line px-5 py-3 text-sm text-muted sm:px-6" data-testid="totals-hidden">
+                Quote totals are shown to the office. You see the price per unit on each line.
+              </p>
+            )}
           </Card>
 
           {pricing && <PricingHelpCard help={pricing} />}
@@ -228,7 +237,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                     <Link href={`/quotes/${quote.id}/versions/${v.id}`} className="font-semibold hover:text-brand-fg hover:underline">
                       Revision {v.version_no}
                     </Link>
-                    <span className="font-semibold tabular">{formatCents(v.total_cents)}</span>
+                    {v.total_cents !== null && <span className="font-semibold tabular">{formatCents(v.total_cents)}</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted">
                     {v.sent_at ? <Badge tone="green">Sent {formatDate(v.sent_at.slice(0, 10))}</Badge> : v.locked_at ? <Badge tone="dark">Issued</Badge> : <Badge>Draft</Badge>}

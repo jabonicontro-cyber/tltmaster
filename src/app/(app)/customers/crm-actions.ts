@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ACTIVITY_KINDS, STAGES, dollarsToCents, parseTags } from "@/lib/crm/labels";
 import { isOperationalDate } from "@/lib/dates";
-import { assertPermission } from "@/server/auth";
+import { assertPermission, getAccess } from "@/server/auth";
+import { canSeeSalesTotals } from "@/lib/permissions";
 import { dbErrorMessage } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 
@@ -127,8 +128,10 @@ export async function saveOpportunity(formData: FormData) {
   if (follow === false || close === false) go(back, "error", "Enter valid dates.");
   const lostReason = text(formData, "lost_reason", 500);
   if (stage === "lost" && !lostReason) go(back, "error", "Say why it was lost. It helps the next quote.");
+  // The value only from people who see values (money access, owner 2026-11-18): anyone else's save leaves it as it is.
+  const values = canSeeSalesTotals(await getAccess());
   const row = {
-    stage, value_cents: value, probability, follow_up_on: follow, expected_close_on: close, lost_reason: lostReason,
+    stage, ...(values ? { value_cents: value } : {}), probability, follow_up_on: follow, expected_close_on: close, lost_reason: lostReason,
     next_action: text(formData, "next_action", 300), owner_id: optionalUser(formData, "owner_id"),
   };
   const { error } = oppId.success

@@ -12,7 +12,7 @@ import { orderToCashRows } from "@/server/data/order-to-cash";
 import { businessToday } from "@/server/data/settings";
 import { getSay } from "@/server/industry";
 
-export const metadata = { title: "Order to cash" };
+export const metadata = { title: "Order to Cash" };
 
 type Search = { stage?: string; show?: string; q?: string };
 const LIMIT = 200;
@@ -36,10 +36,15 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
   return (
     <>
       <PageHeader
-        title="Order to cash"
-        description={say("Every open order from confirmation to billing: where it is, what needs attention, why, and which team acts next. Read from the same records as Orders, Dispatch, Tickets and Billing. Nothing here changes an order.")}
+        title="Order to Cash"
+        description={
+          <>
+            {say("A read-only overview of every order from delivery to payment: where each one is, what needs attention, why, and which team acts next. Read from the same records as Orders, Dispatch, Tickets and Billing. Nothing here changes an order.")}{" "}
+            <Link href="/billing" className="font-semibold text-brand-fg underline-offset-2 hover:underline">Your daily billing work is in Billing</Link>.
+          </>
+        }
       />
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7" aria-label="Stages">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9" aria-label="Stages">
         {summary.map((s) => (
           <li key={s.stage}>
             <Link
@@ -49,14 +54,14 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
             >
               <span className="block text-xs font-medium text-muted">{say(STAGE_LABELS[s.stage])}</span>
               <span className="mt-0.5 block text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{s.total}</span>
-              <span className="block text-xs text-muted">{s.attention ? `${s.attention} need attention` : "Nothing waiting"} · {formatCents(s.cents)}</span>
+              <span className="block text-xs text-muted">{s.attention ? `${s.attention} need attention` : "Nothing waiting"} · {s.cents === null ? "value not available" : formatCents(s.cents)}</span>
             </Link>
           </li>
         ))}
       </ul>
       {/* A limit, stated once and quietly: the view ends at Handed off. */}
       <p className="mt-2.5 text-sm text-muted">
-        This view ends at Handed off. Invoices, what customers owe and payments are in{" "}
+        Invoiced and Paid come from the invoices Taviron sends; when QuickBooks sends your invoices, an order&apos;s path here ends at Handed off. Every invoice, what customers owe and payments are in{" "}
         <Link href="/billing/invoices" className="font-medium text-brand-fg underline-offset-2 hover:underline">Billing → Invoices</Link>.
       </p>
 

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { QuoteEditor } from "@/components/quotes/quote-editor";
 import { QuoteStatusBadge, SampleBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
-import { can } from "@/lib/permissions";
+import { can, canSeeSalesTotals } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getQuoteDetail } from "@/server/data/quotes";
 import { editorStateFromVersion, loadCustomerContextFor, loadEditorReferenceData } from "@/server/quotes/editor-data";
@@ -48,6 +48,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
         defaultTaxRateBp={ref.settings.default_tax_rate_bp}
         validityDays={ref.settings.quote_validity_days}
         canOverride={can(access, "pricing.override")}
+        showTotals={canSeeSalesTotals(access)}
         canSetTaxDefault={can(access, "settings.manage")}
         canEditCustomers={can(access, "customers.edit")}
         priceLists={ref.priceLists}

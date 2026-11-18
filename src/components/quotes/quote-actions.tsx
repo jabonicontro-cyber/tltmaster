@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { CheckCircle2, ClipboardList, Copy, Download, Mail, Pencil, Printer, Send, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Copy, Download, Mail, Pencil, Printer, Send, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
@@ -27,6 +27,11 @@ interface Props {
   emailed?: boolean;
   /** Orders switched off (MOD1, quotes only): accepting a quote marks it won; no order is offered. */
   quotesOnly?: boolean;
+  /**
+   * The customer is marked "PO required" and this revision has no PO yet (BL1, owner 2026-11-17): accepting asks for it.
+   * A warning, never a block. The text is the customer's own PO instructions, if any.
+   */
+  poMissing?: { instructions: string } | null;
 }
 
 const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
@@ -36,13 +41,14 @@ const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
   canceled: "Cancel quote",
 };
 
-export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order, emailed = false, quotesOnly = false }: Props) {
+export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order, emailed = false, quotesOnly = false, poMissing = null }: Props) {
   const router = useRouter();
   const [emailOpen, setEmailOpen] = useState(false);
   const [markOpen, setMarkOpen] = useState(false);
   const [reviseOpen, setReviseOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState<QuoteStatus | null>(null);
   const [note, setNote] = useState("");
+  const [po, setPo] = useState("");
   // Customer on credit hold (B128): shown after the first try; the reason goes with the next one.
   const [creditHold, setCreditHold] = useState<string | null>(null);
   const [creditReason, setCreditReason] = useState("");
@@ -194,7 +200,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
         tone={statusTarget === "canceled" ? "danger" : "primary"}
         onConfirm={async () => {
           if (!statusTarget) return;
-          const r = await setQuoteStatus(quoteId, statusTarget, note);
+          const r = await setQuoteStatus(quoteId, statusTarget, note, statusTarget === "accepted" ? po : "");
           if (!r.ok) return r.error;
           toast.success(r.message ?? "Status updated");
           router.refresh();
@@ -213,6 +219,17 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
               placeholder={statusTarget === "accepted" ? "e.g. Accepted by phone, Pat Morgan" : ""}
             />
           </Field>
+        )}
+        {statusTarget === "accepted" && poMissing && (
+          <div className="mt-3 space-y-2" data-testid="accept-po">
+            <p className="flex gap-2 rounded-control border border-line bg-surface px-3 py-2 text-sm text-ink">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
+              <span>This customer needs a PO number on their invoices.{poMissing.instructions ? ` ${poMissing.instructions}` : ""} Ask for it now. You can still go ahead without it and add it later.</span>
+            </p>
+            <Field label="Customer PO number" htmlFor="accept-po-input" hint={quotesOnly ? "Kept on the won quote." : "Copied to the order."}>
+              <Input id="accept-po-input" value={po} maxLength={100} onChange={(e) => setPo(e.target.value)} placeholder="e.g. PO 45-1180" />
+            </Field>
+          </div>
         )}
       </ConfirmDialog>
     </div>

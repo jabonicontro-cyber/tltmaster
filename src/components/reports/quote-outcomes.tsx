@@ -43,7 +43,8 @@ function GroupTable({ label, rows, first }: { label: string; rows: Group[]; firs
   );
 }
 
-export async function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
+/** values: the won and lost dollar totals, only for billing or pricing access (SEC7); the rates show for everyone. */
+export async function QuoteOutcomesSection({ data, values = true }: { data: QuoteOutcomes; values?: boolean }) {
   const say = await getSay();
   return (
     <section aria-label="Quotes won and lost" className="space-y-4">
@@ -58,8 +59,8 @@ export async function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
           <CardBody className="space-y-6">
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div><dt className="text-sm text-muted">Win rate</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{pct(data.winRate)}</dd><dd className="text-xs text-muted">{data.won} won of {data.decided} decided</dd></div>
-              <div><dt className="text-sm text-muted">Won value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{formatCents(data.wonValueCents)}</dd><dd className="text-xs text-muted">Quoted totals of accepted quotes</dd></div>
-              <div><dt className="text-sm text-muted">Lost value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{formatCents(data.lostValueCents)}</dd><dd className="text-xs text-muted">{data.lost} declined or expired</dd></div>
+              {values && <div><dt className="text-sm text-muted">Won value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{data.wonValueCents === null ? "Not available" : formatCents(data.wonValueCents)}</dd><dd className="text-xs text-muted">Quoted totals of accepted quotes</dd></div>}
+              {values && <div><dt className="text-sm text-muted">Lost value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{data.lostValueCents === null ? "Not available" : formatCents(data.lostValueCents)}</dd><dd className="text-xs text-muted">{data.lost} declined or expired</dd></div>}
               <div><dt className="text-sm text-muted">Time to a decision</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{data.medianDaysToDecision === null ? "–" : `${data.medianDaysToDecision} days`}</dd><dd className="text-xs text-muted">Median, from first sent</dd></div>
             </dl>
           </CardBody>

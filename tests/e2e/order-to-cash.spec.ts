@@ -22,7 +22,7 @@ test("an unscheduled order shows in Needs scheduling with the next step and team
 
   await signIn(page, "owner");
   await page.goto(`/order-to-cash?q=${encodeURIComponent(project)}`);
-  await expect(page.getByRole("heading", { name: "Order to cash", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Order to Cash", level: 1 })).toBeVisible();
   // Invoices and payments live in Billing → Invoices; this view says so instead of implying it bills.
   await expect(page.getByRole("link", { name: "Billing → Invoices" })).toHaveAttribute("href", "/billing/invoices");
   const row = page.getByRole("row").filter({ hasText: project });

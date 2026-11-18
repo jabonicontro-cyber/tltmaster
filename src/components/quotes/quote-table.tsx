@@ -8,6 +8,7 @@ import { isPastExpiration } from "@/lib/quotes/status";
 import type { QuoteListRow } from "@/server/data/types";
 import { getSay } from "@/server/industry";
 import { moduleIsOn } from "@/server/modules";
+import { seesSalesTotals } from "@/server/data/sales-money";
 
 /**
  * Quotes as a table. Rows sorted by activity (the Quotes list, WK1) carry it, and the table then shows a "Last activity"
@@ -18,6 +19,8 @@ export async function QuoteTable({ rows, today, showCustomer = true, timezone }:
   const won = !(await moduleIsOn("orders"));
   const say = await getSay();
   const showActivity = rows.some((r) => r.activity);
+  // Quote totals only for billing or pricing access (SEC7).
+  const showTotals = await seesSalesTotals();
   return (
     <TableWrap>
       <Table>
@@ -29,7 +32,7 @@ export async function QuoteTable({ rows, today, showCustomer = true, timezone }:
             <Th className="hidden sm:table-cell">Expires</Th>
             {showActivity && <Th className="hidden lg:table-cell">Last activity</Th>}
             <Th>Status</Th>
-            <Th align="right">Total</Th>
+            {showTotals && <Th align="right">Total</Th>}
           </tr>
         </thead>
         <tbody>
@@ -71,9 +74,11 @@ export async function QuoteTable({ rows, today, showCustomer = true, timezone }:
                 <Td>
                   <QuoteStatusBadge status={q.status} won={won} />
                 </Td>
-                <Td align="right" className="font-semibold whitespace-nowrap">
-                  {formatCents(q.total_cents)}
-                </Td>
+                {showTotals && (
+                  <Td align="right" className="font-semibold whitespace-nowrap">
+                    {q.total_cents !== null ? formatCents(q.total_cents) : "–"}
+                  </Td>
+                )}
               </Tr>
             );
           })}

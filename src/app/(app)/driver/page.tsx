@@ -117,11 +117,15 @@ function RestrictedTruck({ truck, contact }: { truck: string; contact: DispatchC
   );
 }
 
-/** "Something wrong? Tell the office": the load's problem report, with the ticket number filled in. */
-function TellOffice({ assignmentId, ticket }: { assignmentId: string; ticket: string }) {
+/**
+ * "Mistake on my ticket" (owner 2026-11-17, TM1): a ticket already sent is wrong. It goes to the office's ticket review,
+ * which corrects the ticket; not to dispatch as a problem with the load.
+ */
+function TellOffice({ ticketId, ticket, reported = false }: { ticketId: string; ticket: string; reported?: boolean }) {
+  if (reported) return <span className="inline-flex min-h-11 items-center text-sm font-semibold text-muted" data-testid="mistake-reported">Mistake reported: the office is checking it</span>;
   return (
-    <Link href={`/driver/assignments/${assignmentId}/report?ticket=${encodeURIComponent(ticket)}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-fg underline">
-      Something wrong? Tell the office<span className="sr-only"> about ticket {ticket}</span>
+    <Link href={`/driver/tickets/${ticketId}/mistake`} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-fg underline">
+      Mistake on my ticket<span className="sr-only"> {ticket}</span>
     </Link>
   );
 }
@@ -233,9 +237,10 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
               <li key={t.id} className="flex flex-wrap items-center gap-x-2 text-sm">
                 <ClipboardCheck className="size-4 text-green-700" aria-hidden />
                 <span className="font-semibold tabular">{t.number}</span>
+                {t.paper_number && <span className="text-muted tabular" data-testid="paper-number">paper {t.paper_number}</span>}
                 <span className="tabular">{trimNumber(t.quantity)} {t.unit_code}</span>
                 <TicketStatusBadge status={t.status} />
-                {t.status !== "voided" && t.status !== "superseded" && <TellOffice assignmentId={a.assignment_id} ticket={t.number} />}
+                {t.status !== "voided" && t.status !== "superseded" && <TellOffice ticketId={t.id} ticket={t.number} />}
               </li>
             ))}
           </ul>
@@ -572,6 +577,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
               <li key={t.id} className="px-5 py-3 sm:px-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold tabular">{t.number}</span>
+                  {t.paper_number && <span className="text-sm text-muted tabular">paper {t.paper_number}</span>}
                   <TicketStatusBadge status={t.status} />
                   <span className="ml-auto font-semibold tabular">{trimNumber(t.quantity)} {t.unit_code}</span>
                 </div>
@@ -579,7 +585,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
                 {/* The badge already says Accepted or Voided; the line explains only the in-between states. */}
                 {t.status !== "accepted" && t.status !== "voided" && <p className="text-sm">{DRIVER_TICKET_STATUS[t.status]}</p>}
                 {t.status === "needs_review" && t.review_reasons[0] && <p className="text-sm text-muted">{reviewReasonLabel(t.review_reasons[0])}</p>}
-                {(() => { const a = loadOf(t.order_number, t.load_number); return a && t.status !== "voided" && t.status !== "superseded" ? <TellOffice assignmentId={a.assignment_id} ticket={t.number} /> : null; })()}
+                {t.status !== "voided" && t.status !== "superseded" && <TellOffice ticketId={t.id} ticket={t.number} reported={t.mistake_reported} />}
               </li>
             ))}
           </ul>

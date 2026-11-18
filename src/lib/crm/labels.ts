@@ -74,11 +74,12 @@ export interface CustomerHistory {
   open_orders: number;
   first_order_on: string | null;
   last_order_on: string | null;
-  ordered_cents_365d: number;
+  /** null without billing or pricing access (SEC7). */
+  ordered_cents_365d: number | null;
   accepted_tickets: number;
   delivered_365d: Record<string, number>;
   quotes: { open: number; accepted: number; decided: number };
-  recent_orders: Array<{ id: string; order_number: string; status: string; order_date: string; total_cents: number }>;
+  recent_orders: Array<{ id: string; order_number: string; status: string; order_date: string; total_cents: number | null }>;
   quiet: boolean | null;
 }
 

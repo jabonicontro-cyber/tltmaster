@@ -8,6 +8,7 @@ import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { getUserNames } from "./quotes";
 import { businessToday } from "./settings";
+import { orderLineAmounts, orderTotals } from "./sales-money";
 import { resourceNames, type TicketRow } from "./tickets";
 
 type Num = number | string;
@@ -25,7 +26,8 @@ export interface BillingOrderRow {
   service_start: string | null;
   service_end: string | null;
   completed_at: string | null;
-  total_cents: number;
+  /** null when it could not be read (or the person has no billing or pricing access: SEC7). */
+  total_cents: number | null;
   loads_total: number;
   loads_due: number;
   loads_missing: number;
@@ -313,9 +315,11 @@ export async function getOrderBilling(orderId: string) {
     getUserNames(),
     businessToday(),
     // Every line (percentages and discounts too) and the order's tax rate, for the invoice draft.
-    supabase.from("order_lines").select("id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable, amount_cents").eq("order_id", orderId).order("line_no"),
-    supabase.from("orders").select("tax_rate_bp, total_cents, edit_seq").eq("id", orderId).maybeSingle(),
+    // Line amounts and the order total through order_line_amounts / order_totals (SEC7, 20261120024700): billing access.
+    supabase.from("order_lines").select("id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable").eq("order_id", orderId).order("line_no"),
+    supabase.from("orders").select("tax_rate_bp, edit_seq").eq("id", orderId).maybeSingle(),
   ]);
+  const [lineAmounts, orderMoney] = await Promise.all([orderLineAmounts([orderId]), orderTotals([orderId])]);
   // "Price to be checked" (M1, 20261120016100): who typed which price; nothing before that update is installed.
   const [checkRes, typedRes] = (status as BillingOrderRow).price_check_pending
     ? await Promise.all([
@@ -327,13 +331,20 @@ export async function getOrderBilling(orderId: string) {
   const priceCheck = check?.price_check_requested_at
     ? { requestedAt: check.price_check_requested_at, requestedBy: check.price_check_requested_by, lines: typedPriceLines((typedRes?.data ?? []) as PriceCheckLine[]), correctable: correctableLines((typedRes?.data ?? []) as PriceCheckLine[]) }
     : null;
-  const draft = buildInvoiceDraft({
-    lines: (orderLines.data ?? []) as DraftOrderLine[],
-    tickets: (tickets.data ?? []) as DraftTicket[],
-    taxRateBp: (order.data as { tax_rate_bp: number } | null)?.tax_rate_bp ?? 0,
-    orderTotalCents: (order.data as { total_cents: number } | null)?.total_cents ?? (status as BillingOrderRow).total_cents,
-    readiness: (status as BillingOrderRow).readiness,
-  });
+  // The invoice draft only from amounts actually read (SEC7): when a line amount or the order total could not be read, no
+  // draft is shown, never one computed on zeros.
+  const draftLines = (orderLines.data ?? []) as Array<Omit<DraftOrderLine, "amount_cents"> & { id: string }>;
+  const orderTotal = orderMoney?.get(orderId)?.total_cents ?? (status as BillingOrderRow).total_cents ?? null;
+  const amountsRead = Boolean(lineAmounts) && orderTotal !== null && draftLines.every((l) => lineAmounts!.has(l.id));
+  const draft = amountsRead
+    ? buildInvoiceDraft({
+        lines: draftLines.map((l) => ({ ...l, amount_cents: lineAmounts!.get(l.id)! })) as DraftOrderLine[],
+        tickets: (tickets.data ?? []) as DraftTicket[],
+        taxRateBp: (order.data as { tax_rate_bp: number } | null)?.tax_rate_bp ?? 0,
+        orderTotalCents: orderTotal!,
+        readiness: (status as BillingOrderRow).readiness,
+      })
+    : null;
   return {
     draft,
     /** The order's edit counter, for completing it from the billing page (the database refuses a stale one). */

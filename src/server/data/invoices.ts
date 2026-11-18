@@ -9,13 +9,28 @@ import { createClient } from "@/server/supabase/server";
 const MISSING = new Set(["42P01", "PGRST205", "42883", "PGRST202"]);
 
 export type Issuer = "quickbooks" | "taviron";
-export interface InvoicingSettings { installed: boolean; issuer: Issuer; termsDays: number; footer: string }
+/**
+ * chosen: the company answered "Who sends your invoices?" (INV1, 20261120024710). A company that never did is asked in
+ * Getting started and on the billing pages; until then QuickBooks is only the default, not a choice. Before that update
+ * is installed every company counts as having chosen (nothing is asked, as before).
+ */
+export interface InvoicingSettings { installed: boolean; issuer: Issuer; termsDays: number; footer: string; chosen: boolean }
 
 export async function invoicingSettings(): Promise<InvoicingSettings> {
-  const { data, error } = await (await createClient()).from("invoicing_settings").select("issuer, terms_days, footer").maybeSingle();
-  if (error) return { installed: !MISSING.has(error.code ?? ""), issuer: "quickbooks", termsDays: 30, footer: "" };
-  const d = data as { issuer: Issuer; terms_days: number; footer: string } | null;
-  return { installed: true, issuer: d?.issuer ?? "quickbooks", termsDays: d?.terms_days ?? 30, footer: d?.footer ?? "" };
+  const supabase = await createClient();
+  let res = await supabase.from("invoicing_settings").select("issuer, terms_days, footer, issuer_chosen_at").maybeSingle();
+  let chosenKnown = true;
+  if (res.error?.code === "42703" || res.error?.code === "PGRST204") {
+    chosenKnown = false;
+    res = await supabase.from("invoicing_settings").select("issuer, terms_days, footer").maybeSingle();
+  }
+  const { data, error } = res;
+  if (error) return { installed: !MISSING.has(error.code ?? ""), issuer: "quickbooks", termsDays: 30, footer: "", chosen: true };
+  const d = data as { issuer: Issuer; terms_days: number; footer: string; issuer_chosen_at?: string | null } | null;
+  return {
+    installed: true, issuer: d?.issuer ?? "quickbooks", termsDays: d?.terms_days ?? 30, footer: d?.footer ?? "",
+    chosen: chosenKnown ? Boolean(d?.issuer_chosen_at) : true,
+  };
 }
 
 export interface InvoiceLine {

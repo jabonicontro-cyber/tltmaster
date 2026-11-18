@@ -227,8 +227,10 @@ test("a price a dispatcher types is shown as to be checked, and the office confi
     await signIn(page, "dispatcher");
     await page.goto("/orders/new");
     await fillPhonedInOrder(page, "6");
-    // Tax follows the customer and the company setting.
-    await expect(page.getByLabel("Sales tax %")).toBeDisabled();
+    // Tax follows the customer and the company setting; the totals are the office's (SEC7, owner 2026-11-17): no tax
+    // field and no totals for a dispatcher, only the price per unit on each line.
+    await expect(page.getByTestId("editor-totals-hidden")).toBeVisible();
+    await expect(page.getByLabel("Sales tax %")).toHaveCount(0);
     await expect(page.getByText("Sales tax follows the customer and the company setting.")).toBeVisible();
     await expect(page.getByRole("listitem", { name: "Line 1" }).getByRole("checkbox", { name: "Taxable" })).toBeDisabled();
     // A rush haul without any price-list rate: the dispatcher types the price.

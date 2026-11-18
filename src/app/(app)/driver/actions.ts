@@ -6,6 +6,7 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { OPERATIONAL_DATE_MESSAGE, isOperationalDate } from "@/lib/dates";
 import { REPORT_KINDS } from "@/lib/driver/rules";
 import { quantityError } from "@/lib/tickets/rules";
+import { MISTAKE_FIELDS, mistakeError } from "@/lib/tickets/mistakes";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
@@ -114,5 +115,37 @@ export async function submitFieldReport(input: z.input<typeof reportInput>): Pro
     revalidatePath("/field-reports");
     const d = data as { created: boolean; report_id: string };
     return ok({ created: d.created, reportId: d.report_id }, "Report sent to the office.");
+  }) as Promise<ActionResult<{ created: boolean; reportId: string }>>;
+}
+
+const mistakeInput = z.object({
+  ticketId: z.uuid("Choose the ticket."),
+  field: z.enum(MISTAKE_FIELDS, "Choose what is wrong."),
+  correctValue: z.string().trim().max(200, "Keep the correct value under 200 characters."),
+  note: z.string().trim().max(1000, "Keep the note under 1000 characters."),
+  submissionKey: z.uuid(),
+});
+
+/**
+ * "Mistake on my ticket" (TM1, 20261120024720): the driver's own sent ticket only; the report goes to the office's
+ * ticket review, never to dispatch. The database checks the driver, the ticket and the submission key again; the phone's
+ * outbox sends the same key until it is in, so a retry never records twice.
+ */
+export async function reportTicketMistake(input: z.input<typeof mistakeInput>): Promise<ActionResult<{ created: boolean; reportId: string }>> {
+  return guard(async () => {
+    await assertPermission("driver.portal");
+    const parsed = mistakeInput.safeParse(input);
+    if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the report.");
+    const r = parsed.data;
+    const problem = mistakeError(r.field, r.correctValue, r.note);
+    if (problem) return fail(problem);
+    const { data, error } = await (await createClient()).rpc("ticket_mistake_report", {
+      p_payload: { ticket_id: r.ticketId, field: r.field, correct_value: r.correctValue, note: r.note, submission_key: r.submissionKey },
+    });
+    if (error) return fail(error.code === "42883" || error.code === "PGRST202" ? "Reporting a mistake on a ticket is not available yet. Call the office." : dbErrorMessage(error));
+    revalidatePath("/driver");
+    revalidatePath("/tickets");
+    const d = data as { created: boolean; report_id: string };
+    return ok({ created: d.created, reportId: d.report_id }, "Sent to the office.");
   }) as Promise<ActionResult<{ created: boolean; reportId: string }>>;
 }

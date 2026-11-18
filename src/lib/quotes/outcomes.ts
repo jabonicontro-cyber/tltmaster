@@ -25,7 +25,8 @@ export interface DecidedQuote {
   /** Straight-line miles from the yard to the job site, or null when either has no map position. */
   miles: number | null;
   reason: string;
-  totalCents: number;
+  /** null when it could not be read (or the person has no billing or pricing access). */
+  totalCents: number | null;
   /** Material lines of the decided version. */
   materials: Array<{ name: string; unit: string; rateCents: number }>;
 }
@@ -53,8 +54,9 @@ export interface QuoteOutcomes {
   lost: number;
   winRate: number | null;
   medianDaysToDecision: number | null;
-  wonValueCents: number;
-  lostValueCents: number;
+  /** null when any decided quote's total could not be read: shown as not available, never summed as zero. */
+  wonValueCents: number | null;
+  lostValueCents: number | null;
   materials: MaterialGroup[];
   customers: Group[];
   distance: Group[];
@@ -79,6 +81,8 @@ function group(key: string, label: string, items: DecidedQuote[]): Group {
 export function bandFor(miles: number): (typeof DISTANCE_BANDS)[number] {
   return DISTANCE_BANDS.find((b) => miles < b.max) ?? DISTANCE_BANDS[DISTANCE_BANDS.length - 1];
 }
+
+const sumKnown = (v: Array<number | null>) => (v.some((x) => x === null) ? null : v.reduce<number>((t, x) => t + (x ?? 0), 0));
 
 export function quoteOutcomes(quotes: DecidedQuote[]): QuoteOutcomes {
   const won = quotes.filter((q) => q.outcome === "won");
@@ -122,8 +126,8 @@ export function quoteOutcomes(quotes: DecidedQuote[]): QuoteOutcomes {
     lost: quotes.length - won.length,
     winRate: rate(won.length, quotes.length),
     medianDaysToDecision: median(days),
-    wonValueCents: won.reduce((t, q) => t + q.totalCents, 0),
-    lostValueCents: quotes.filter((q) => q.outcome === "lost").reduce((t, q) => t + q.totalCents, 0),
+    wonValueCents: sumKnown(won.map((q) => q.totalCents)),
+    lostValueCents: sumKnown(quotes.filter((q) => q.outcome === "lost").map((q) => q.totalCents)),
     materials,
     customers,
     distance,

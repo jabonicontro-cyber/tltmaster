@@ -181,7 +181,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           </Card>
 
           {crm && <HistoryCard history={crm.history} timezone={timezone} />}
-          {crm && <OpportunitiesCard customerId={customer.id} opportunities={crm.opportunities} names={peopleNames} canEdit={canEdit} today={today} />}
+          {crm && <OpportunitiesCard customerId={customer.id} opportunities={crm.opportunities} names={peopleNames} canEdit={canEdit} today={today} showValues={crm.showValues} />}
 
           {!off.includes("quotes") && (
           <Card>

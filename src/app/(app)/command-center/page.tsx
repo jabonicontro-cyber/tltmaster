@@ -43,7 +43,7 @@ import { fleetOverview } from "@/server/data/fleet";
 import { listLeaks } from "@/server/data/leaks";
 import { formatCents } from "@/lib/money";
 import { heldTotal, missedTotal } from "@/lib/billing/leaks";
-import { moneyOwed } from "@/lib/billing/invoices";
+import { moneyOwed, overdueNeverSent } from "@/lib/billing/invoices";
 import { invoicingSettings, listInvoices } from "@/server/data/invoices";
 import { GettingStarted } from "@/components/getting-started/getting-started";
 import { MoneyOwedTile } from "@/components/command-center/money-owed-tile";
@@ -146,7 +146,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     // Money owed (owner first): open receivables from issued invoices, for people who see billing; the same records and
     // rules as Billing → Invoices. installed false before the invoicing update; null when it cannot be read.
     uses("billing.view")
-      ? Promise.all([listInvoices(), invoicingSettings()]).then(([inv, set]) => ({ installed: Boolean(inv) && set.installed, issuer: set.issuer, owed: moneyOwed(inv ?? [], today) }), () => null)
+      ? Promise.all([listInvoices(), invoicingSettings()]).then(([inv, set]) => ({ installed: Boolean(inv) && set.installed, issuer: set.issuer, owed: moneyOwed(inv ?? [], today), neverSent: (inv ?? []).filter((i) => overdueNeverSent(i, today)).length }), () => null)
       : none,
   ]);
   const summary: Loaded<CommandSummary> | null = attention?.summary ?? null;
@@ -383,6 +383,17 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         sub: !leaks.length ? "Nothing slipping through" : missed > 0 ? `${formatCents(missed)} possibly missed (estimated)` : `${formatCents(held)} of billing held up (estimated)`,
         href: "/billing/leaks",
         tone: missed > 0 ? "warn" : "default",
+      });
+    }
+    // Overdue but never sent (BL1): the office's next step is on the invoices list.
+    if (money?.neverSent) {
+      cards.push({
+        key: "never_sent",
+        label: "Overdue, never sent",
+        value: money.neverSent,
+        sub: "Invoices the customer may never have received: send now or mark as sent",
+        href: "/billing/invoices?view=never_sent",
+        tone: "warn",
       });
     }
     sections.push({

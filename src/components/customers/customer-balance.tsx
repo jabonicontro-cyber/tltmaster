@@ -54,6 +54,7 @@ export async function CustomerBalance({ customerId, today }: { customerId: strin
                 <>
                   Estimate: accepted tickets at the order&apos;s prices, on {s.deliveredOrders} order{s.deliveredOrders === 1 ? "" : "s"} in billing review.
                   {s.ticketsPending > 0 && ` ${s.ticketsPending} ticket${s.ticketsPending === 1 ? " is" : "s are"} not accepted yet and not counted.`}
+                  {s.deliveredUnknown > 0 && ` Not available for ${s.deliveredUnknown} order${s.deliveredUnknown === 1 ? "" : "s"}: their amounts couldn't be read, so they are not counted.`}
                 </>
               )}
             </Figure>
@@ -84,7 +85,7 @@ export async function CustomerBalance({ customerId, today }: { customerId: strin
               <li key={`d-${d.order_id}`}>
                 <Link href={`/billing/orders/${d.order_id}`} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm hover:bg-surface">
                   <span className="font-semibold tabular">{d.order_number}<span className="ml-2 font-normal text-muted">in billing review{d.tickets_pending ? `, ${d.tickets_pending} ticket${d.tickets_pending === 1 ? "" : "s"} to check` : ""}</span></span>
-                  <span className="tabular">{d.value_cents ? `${formatCents(d.value_cents)} so far` : "–"}</span>
+                  <span className="tabular">{d.value_cents === null ? "Not available" : d.value_cents ? `${formatCents(d.value_cents)} so far` : "–"}</span>
                 </Link>
               </li>
             ))}

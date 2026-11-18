@@ -12,7 +12,8 @@ import { cn } from "@/lib/cn";
 import { addDays, formatDate } from "@/lib/dates";
 import { cashForecast, orderingLess, payingSlower, type OpenInvoice, type OrderPoint, type PaidInvoice } from "@/lib/insights/customers";
 import { formatCents } from "@/lib/money";
-import { can } from "@/lib/permissions";
+import { can, canSeeSalesTotals } from "@/lib/permissions";
+import { orderTotals } from "@/server/data/sales-money";
 import { requireAccess } from "@/server/auth";
 import { listInvoices } from "@/server/data/invoices";
 import { businessToday } from "@/server/data/settings";
@@ -35,8 +36,8 @@ export default async function CustomerInsightsPage() {
   const supabase = await createClient();
   const [orderRows, invoices] = await Promise.all([
     orders
-      ? allRows(() => supabase.from("orders").select("customer_id, order_date, total_cents, customers(name)").not("status", "in", "(draft,canceled)").gte("order_date", addDays(today, -119)).order("id"))
-        .then((r) => (r.error ? [] : ((r.data ?? []) as unknown as Array<{ customer_id: string; order_date: string; total_cents: number | string; customers: { name: string } | null }>)))
+      ? allRows(() => supabase.from("orders").select("id, customer_id, order_date, customers(name)").not("status", "in", "(draft,canceled)").gte("order_date", addDays(today, -119)).order("id"))
+        .then((r) => (r.error ? [] : ((r.data ?? []) as unknown as Array<{ id: string; customer_id: string; order_date: string; customers: { name: string } | null }>)))
       : Promise.resolve([]),
     billing ? listInvoices().catch(() => null) : Promise.resolve(null),
   ]);
@@ -46,7 +47,10 @@ export default async function CustomerInsightsPage() {
         .then((r) => (r.error ? null : (r.data as { has_rates: boolean; by_customer: Array<{ name: string; loads: number; revenue_cents: number; cost_cents: number; profit_cents: number }> })))
     : null;
   const topProfit = (profit?.by_customer ?? []).filter((c) => c.revenue_cents > 0).sort((a, b) => b.profit_cents - a.profit_cents).slice(0, 10);
-  const points: OrderPoint[] = orderRows.map((o) => ({ customerId: o.customer_id, customerName: o.customers?.name ?? "Customer", orderDate: o.order_date, totalCents: Number(o.total_cents) }));
+  // Order totals only for billing or pricing access (SEC7): without them "ordering less" counts orders and shows no
+  // dollar figure.
+  const totals = canSeeSalesTotals(access) && orderRows.length ? await orderTotals(orderRows.map((o) => o.id)) : null;
+  const points: OrderPoint[] = orderRows.map((o) => ({ customerId: o.customer_id, customerName: o.customers?.name ?? "Customer", orderDate: o.order_date, totalCents: totals?.get(o.id)?.total_cents ?? null }));
   const issued = (invoices ?? []).filter((i) => i.status === "issued" && i.issue_date);
   const paid: PaidInvoice[] = issued
     .filter((i) => i.total_cents > 0 && paidCents(i) >= i.total_cents)
@@ -129,7 +133,7 @@ export default async function CustomerInsightsPage() {
                   <li key={c.customerId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 sm:px-6">
                     <Link href={`/customers/${c.customerId}`} className="font-semibold hover:underline">{c.customerName}</Link>
                     <span className="min-w-0 flex-1 text-sm text-muted">{c.detail}</span>
-                    {c.weightCents > 0 && <Badge tone="amber">≈ {formatCents(c.weightCents)} below usual</Badge>}
+                    {c.weightCents !== null && c.weightCents > 0 && <Badge tone="amber">≈ {formatCents(c.weightCents)} below usual</Badge>}
                   </li>
                 ))}
               </ul>
@@ -145,7 +149,7 @@ export default async function CustomerInsightsPage() {
                   <li key={c.customerId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 sm:px-6">
                     <Link href={`/customers/${c.customerId}`} className="font-semibold hover:underline">{c.customerName || "Customer"}</Link>
                     <span className="min-w-0 flex-1 text-sm text-muted">{c.detail}</span>
-                    {c.weightCents > 0 && <Badge tone="amber">{formatCents(c.weightCents)} open</Badge>}
+                    {c.weightCents !== null && c.weightCents > 0 && <Badge tone="amber">{formatCents(c.weightCents)} open</Badge>}
                   </li>
                 ))}
               </ul>
