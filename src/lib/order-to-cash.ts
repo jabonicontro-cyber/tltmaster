@@ -37,7 +37,8 @@ export interface OrderRow {
   scheduled_start: string | null;
   order_date: string;
   completed_at: string | null;
-  total_cents: number;
+  /** null when it could not be read (never counted as zero). */
+  total_cents: number | null;
   loads_total: number;
   loads_missing: number;
   loads_not_due: number;
@@ -105,10 +106,11 @@ export function lifecycle(o: OrderRow): Lifecycle {
 }
 
 /** Counts per stage and how many need attention, for the summary row. */
-export function summarize(rows: OrderRow[]): { stage: Stage; total: number; attention: number; cents: number }[] {
+/** cents is null when any order's total at that stage could not be read (the page says "value not available"). */
+export function summarize(rows: OrderRow[]): { stage: Stage; total: number; attention: number; cents: number | null }[] {
   return STAGES.map((stage) => {
     const here = rows.map((o) => ({ o, l: lifecycle(o) })).filter((x) => x.l.stage === stage);
-    return { stage, total: here.length, attention: here.filter((x) => x.l.attention).length, cents: here.reduce((s, x) => s + Number(x.o.total_cents ?? 0), 0) };
+    return { stage, total: here.length, attention: here.filter((x) => x.l.attention).length, cents: here.some((x) => x.o.total_cents === null) ? null : here.reduce((s, x) => s + Number(x.o.total_cents), 0) };
   });
 }
 

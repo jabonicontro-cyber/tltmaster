@@ -4,8 +4,60 @@
 --   * The order and quote history policies are as before (every entry readable with orders.view / quotes.view).
 --   * The new functions go; the app then shows no totals where it reads them through order_totals and the like, and
 --     reads the history straight from the table.
+--   * Sending a quote and opportunity values follow quotes.send and customers.view alone again.
 -- No rows change.
 begin;
+
+-- First, before anything is dropped: the functions narrowed in place get their earlier text back. Each replacement must
+-- match exactly once, or the rollback stops here and changes nothing.
+do $$
+declare
+  r record;
+  v_def text;
+begin
+  for r in select * from (values
+      ('public.save_order_draft(jsonb)'::regprocedure, $old$    'total_cents', case when private.sales_money_ok() then v_order.total_cents end);$old$,
+       $new$    'total_cents', v_order.total_cents);$new$),
+      ('public.save_quote_draft(jsonb)'::regprocedure, $old$    'total_cents', case when private.sales_money_ok() then v_version.total_cents end);$old$,
+       $new$    'total_cents', v_version.total_cents);$new$),
+      ('private.operational_exceptions_all(uuid)'::regprocedure, $old$'project_name', o.project_name, 'total_cents', case when private.sales_money_ok() then o.total_cents end)$old$,
+       $new$'project_name', o.project_name, 'total_cents', o.total_cents)$new$),
+      ('public.issue_quote_version(uuid, integer)'::regprocedure, $old$  perform private.require_permission('quotes.send');
+  if not private.sales_money_ok() then
+    raise exception 'Quotes with prices are sent by the office.' using errcode = '42501';
+  end if;$old$,
+       $new$  perform private.require_permission('quotes.send');$new$),
+      ('public.record_quote_delivery(uuid, uuid, public.delivery_status, text[], text[], text, text, text, text, text, jsonb)'::regprocedure,
+       $old$  perform private.require_permission('quotes.send');
+  if not private.sales_money_ok() then
+    raise exception 'Quotes with prices are sent by the office.' using errcode = '42501';
+  end if;$old$,
+       $new$  perform private.require_permission('quotes.send');$new$)) as t(fn, old_text, new_text)
+  loop
+    v_def := pg_get_functiondef(r.fn);
+    if (length(v_def) - length(replace(v_def, r.old_text, ''))) / length(r.old_text) <> 1 then
+      raise exception 'The text of % is not as expected; nothing was rolled back.', r.fn;
+    end if;
+    execute replace(v_def, r.old_text, r.new_text);
+  end loop;
+end;
+$$;
+
+-- Opportunity values readable as before; their function and write guard go.
+do $$
+declare
+  v_cols text;
+begin
+  select string_agg(quote_ident(a.attname), ', ' order by a.attnum) into v_cols
+    from pg_attribute a
+   where a.attrelid = 'public.crm_opportunities'::regclass and a.attnum > 0 and not a.attisdropped;
+  execute format('revoke select (%s) on public.crm_opportunities from authenticated', v_cols);
+  grant select on public.crm_opportunities to authenticated;
+end;
+$$;
+drop trigger if exists crm_value_guard on public.crm_opportunities;
+drop function if exists private.crm_value_guard();
+drop function if exists public.crm_opportunity_values(uuid[]);
 
 do $$
 declare
@@ -318,28 +370,6 @@ create policy audit_read_quotes on public.audit_events for select to authenticat
   using (company_id = (select private.current_company_id())
          and entity_type = 'quote'
          and (select private.has_permission('quotes.view')));
-
--- save_order_draft and save_quote_draft answer with the total for everyone again (before private.sales_money_ok goes).
-do $$
-declare
-  r record;
-  v_def text;
-begin
-  for r in select * from (values
-      ('public.save_order_draft(jsonb)'::regprocedure, $old$    'total_cents', case when private.sales_money_ok() then v_order.total_cents end);$old$,
-       $new$    'total_cents', v_order.total_cents);$new$),
-      ('public.save_quote_draft(jsonb)'::regprocedure, $old$    'total_cents', case when private.sales_money_ok() then v_version.total_cents end);$old$,
-       $new$    'total_cents', v_version.total_cents);$new$),
-      ('private.operational_exceptions_all(uuid)'::regprocedure, $old$'project_name', o.project_name, 'total_cents', case when private.sales_money_ok() then o.total_cents end)$old$,
-       $new$'project_name', o.project_name, 'total_cents', o.total_cents)$new$)) as t(fn, old_text, new_text)
-  loop
-    v_def := pg_get_functiondef(r.fn);
-    if position(r.old_text in v_def) > 0 then
-      execute replace(v_def, r.old_text, r.new_text);
-    end if;
-  end loop;
-end;
-$$;
 
 drop function if exists public.sales_history(text, uuid);
 drop function if exists private.sales_history_money_action(text);

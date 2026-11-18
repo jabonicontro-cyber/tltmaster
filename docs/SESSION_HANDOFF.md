@@ -18,8 +18,10 @@ project credentials. Read it together with:
   matches the destructive-statement guard.
 - **Security review needed before release (money data):** SEC7 changes who reads order and quote totals (column grants,
   views, definer functions, the order/quote history, `save_order_draft` / `save_quote_draft` answers, the Command
-  Center's unscheduled-order details). Open question for the owner (one at a time): sales-pipeline opportunity values
-  (`crm_opportunities.value_cents`, customers.view) were left as they are.
+  Center's unscheduled-order details, quote sending, sales-pipeline opportunity values: owner 2026-11-18). Review
+  fixes 2026-11-18 (quote documents never with $0.00, missing amounts stay missing, mistake reports by dispatch base,
+  strict rollbacks) are in the master plan rows SEC7 and TM1. An app rollback after `20261120024700` is applied also
+  needs its SQL rollback (the earlier app selects `*` on those tables).
 - **Website (LR2):** the ten features captured from a local production build (fresh presenter demo shown as Growth, a
   plain-named local capture owner) and published (`published: true`, `verified: "2026-11-18"`); the pricing page names
   each tier's bases now that multiple bases is published. Capture script fixes: a hidden copy of the ready text no longer

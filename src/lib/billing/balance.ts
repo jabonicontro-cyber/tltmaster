@@ -13,7 +13,8 @@ export interface BalanceInput {
   /** Handed-off (not undone) orders with their billed total and the status of the invoice that bills them, if any. */
   handoffs: Array<{ total_cents: number; invoice_status: "draft" | "issued" | "void" | null }>;
   /** Orders still in billing review with their value so far: accepted tickets at the order's prices (an estimate). */
-  delivered: Array<{ value_cents: number; tickets_pending: number }>;
+  /** value_cents null: the order's amounts could not be read (left out of the sum, said as not available). */
+  delivered: Array<{ value_cents: number | null; tickets_pending: number }>;
   /** What is open on billed tickets after payments by ticket (null when not read). */
   ticketsOpenCents: number | null;
   /** Money received and not applied to a ticket yet. */
@@ -32,6 +33,8 @@ export interface BalanceSummary {
   /** Delivered and accepted, not handed off yet (estimate). */
   deliveredCents: number;
   deliveredOrders: number;
+  /** Orders whose delivered value could not be read (not in deliveredCents). */
+  deliveredUnknown: number;
   /** Tickets on those orders not accepted yet (not counted in deliveredCents). */
   ticketsPending: number;
   ticketsOpenCents: number | null;
@@ -46,8 +49,9 @@ export function customerBalance(i: BalanceInput): BalanceSummary {
   const overdueCents = live.filter((x) => invoiceState(x, i.today) === "overdue").reduce((n, x) => n + balanceCents(x), 0);
   const waiting = i.handoffs.filter((h) => h.invoice_status !== "issued");
   const handedOffCents = waiting.reduce((n, h) => n + Number(h.total_cents), 0);
-  const delivered = i.delivered.filter((d) => d.value_cents > 0 || d.tickets_pending > 0);
-  const deliveredCents = delivered.reduce((n, d) => n + Math.max(0, d.value_cents), 0);
+  const delivered = i.delivered.filter((d) => d.value_cents === null || d.value_cents > 0 || d.tickets_pending > 0);
+  const deliveredCents = delivered.reduce((n, d) => n + Math.max(0, d.value_cents ?? 0), 0);
+  const deliveredUnknown = delivered.filter((d) => d.value_cents === null).length;
   const ticketsPending = delivered.reduce((n, d) => n + d.tickets_pending, 0);
   return {
     owedCents,
@@ -57,6 +61,7 @@ export function customerBalance(i: BalanceInput): BalanceSummary {
     invoicedHandoffs: i.handoffs.length - waiting.length,
     deliveredCents,
     deliveredOrders: delivered.length,
+    deliveredUnknown,
     ticketsPending,
     ticketsOpenCents: i.ticketsOpenCents,
     creditCents: i.creditCents,

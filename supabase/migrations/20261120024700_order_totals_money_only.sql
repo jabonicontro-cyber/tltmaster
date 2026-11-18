@@ -24,6 +24,10 @@
 --     quotes.view, and the order's base for base-limited people).
 --   * customer_history (customer page) and dispatch_base_summary (bases page) leave their money figures empty for people
 --     without money access.
+--   * Sending a quote with its prices (issue_quote_version, record_quote_delivery) needs money access: "Quotes with
+--     prices are sent by the office". The default Dispatcher role has no quotes.send, so no default role loses anything.
+--   * Sales-pipeline opportunity values (crm_opportunities.value_cents; owner decision 2026-11-18) are read through
+--     crm_opportunity_values with money access only, and set only with it.
 --   * History: entries that carry a total (order created / created from a quote / saved / price checks, quote created
 --     and saved) are no longer readable straight from audit_events without money access; public.sales_history(type, id)
 --     returns the whole history of one order or quote, with the totals taken out for people without money access.
@@ -605,8 +609,11 @@ grant execute on function public.sales_history(text, uuid) to authenticated;
 -- Saving an order or a quote: the answer carries the new total only for people with money access
 -- -----------------------------------------------------------------------------
 -- save_order_draft (orders.create: dispatchers enter phoned-in orders) and save_quote_draft answer with the saved
--- total; the Command Center's unscheduled-order item carries it in its details. Their bodies are long and otherwise unchanged, so only the final answer is narrowed, in place: the saved
--- definition gets 'total_cents' only when private.sales_money_ok(). Each replacement must match exactly once.
+-- total; the Command Center's unscheduled-order item carries it in its details. Their bodies are long and otherwise
+-- unchanged, so only that part is narrowed, in place: the saved definition gets 'total_cents' only when
+-- private.sales_money_ok(). Sending a quote (issue_quote_version locks the version that is emailed with its prices;
+-- record_quote_delivery records the send) now also needs money access: "Quotes with prices are sent by the office".
+-- Each replacement must match exactly once.
 do $$
 declare
   r record;
@@ -620,11 +627,22 @@ begin
        $new$    'total_cents', case when private.sales_money_ok() then v_version.total_cents end);$new$),
       -- The Command Center's "needs a delivery date" item carried the order total in its details (read by dispatchers).
       ('private.operational_exceptions_all(uuid)'::regprocedure, $old$'project_name', o.project_name, 'total_cents', o.total_cents)$old$,
-       $new$'project_name', o.project_name, 'total_cents', case when private.sales_money_ok() then o.total_cents end)$new$)) as t(fn, old_text, new_text)
+       $new$'project_name', o.project_name, 'total_cents', case when private.sales_money_ok() then o.total_cents end)$new$),
+      ('public.issue_quote_version(uuid, integer)'::regprocedure, $old$  perform private.require_permission('quotes.send');$old$,
+       $new$  perform private.require_permission('quotes.send');
+  if not private.sales_money_ok() then
+    raise exception 'Quotes with prices are sent by the office.' using errcode = '42501';
+  end if;$new$),
+      ('public.record_quote_delivery(uuid, uuid, public.delivery_status, text[], text[], text, text, text, text, text, jsonb)'::regprocedure,
+       $old$  perform private.require_permission('quotes.send');$old$,
+       $new$  perform private.require_permission('quotes.send');
+  if not private.sales_money_ok() then
+    raise exception 'Quotes with prices are sent by the office.' using errcode = '42501';
+  end if;$new$)) as t(fn, old_text, new_text)
   loop
     v_def := pg_get_functiondef(r.fn);
     if (length(v_def) - length(replace(v_def, r.old_text, ''))) / length(r.old_text) <> 1 then
-      raise exception 'The answer of % is not as expected; nothing was changed.', r.fn;
+      raise exception 'The text of % is not as expected; nothing was changed.', r.fn;
     end if;
     v_new := replace(v_def, r.old_text, r.new_text);
     execute v_new;
@@ -632,11 +650,79 @@ begin
 end;
 $$;
 
+-- -----------------------------------------------------------------------------
+-- Sales-pipeline opportunity values (owner decision 2026-11-18): money access only, like order totals
+-- -----------------------------------------------------------------------------
+-- crm_opportunities is readable column by column: every column except value_cents (a column added later needs its own
+-- grant). People with money access read the values through crm_opportunity_values; everyone with customers.view still
+-- reads the opportunity, its stage, probability and follow-ups. Writing a value needs money access too (a trigger), so
+-- a save by someone who cannot see it never changes it.
+do $$
+declare
+  v_cols text;
+begin
+  select string_agg(quote_ident(a.attname), ', ' order by a.attnum) into v_cols
+    from pg_attribute a
+   where a.attrelid = 'public.crm_opportunities'::regclass and a.attnum > 0 and not a.attisdropped and a.attname <> 'value_cents';
+  revoke select on public.crm_opportunities from authenticated;
+  execute format('grant select (%s) on public.crm_opportunities to authenticated', v_cols);
+end;
+$$;
+
+create or replace function public.crm_opportunity_values(p_ids uuid[])
+returns table (opportunity_id uuid, value_cents bigint)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_company uuid := private.require_company();
+begin
+  if not private.has_permission('customers.view') or not private.sales_money_ok() then
+    raise exception 'Only people who can see billing or prices can see opportunity values.' using errcode = '42501';
+  end if;
+  return query
+    select o.id, o.value_cents from public.crm_opportunities o
+     where o.company_id = v_company and o.id = any (coalesce(p_ids, '{}'));
+end;
+$$;
+
+create or replace function private.crm_value_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    return new;
+  end if;
+  if (tg_op = 'INSERT' and new.value_cents is not null) or (tg_op = 'UPDATE' and new.value_cents is distinct from old.value_cents) then
+    if not private.sales_money_ok() then
+      raise exception 'Only people who can see billing or prices can set an opportunity''s value.' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.crm_value_guard() from public, anon, authenticated;
+revoke all on function public.crm_opportunity_values(uuid[]) from public, anon;
+grant execute on function public.crm_opportunity_values(uuid[]) to authenticated;
+drop trigger if exists crm_value_guard on public.crm_opportunities;
+create trigger crm_value_guard before insert or update on public.crm_opportunities
+  for each row execute function private.crm_value_guard();
+
 notify pgrst, 'reload schema';
 
 -- Verification
 do $$
 begin
+  if has_column_privilege('authenticated', 'public.crm_opportunities', 'value_cents', 'select')
+     or not has_column_privilege('authenticated', 'public.crm_opportunities', 'stage', 'select') then
+    raise exception 'Opportunity column access is not as intended.';
+  end if;
   if has_column_privilege('authenticated', 'public.orders', 'total_cents', 'select')
      or has_column_privilege('authenticated', 'public.orders', 'subtotal_cents', 'select')
      or has_column_privilege('authenticated', 'public.orders', 'tax_cents', 'select')
@@ -661,9 +747,11 @@ begin
     raise exception 'A new function is not a pinned security definer function.';
   end if;
   if (select count(*) from pg_proc where oid in ('public.save_order_draft(jsonb)'::regprocedure, 'public.save_quote_draft(jsonb)'::regprocedure,
-                                                'private.operational_exceptions_all(uuid)'::regprocedure)
-        and prosrc like '%private.sales_money_ok()%' and prosecdef and coalesce(proconfig, '{}') @> array['search_path=""']) <> 3 then
-    raise exception 'save_order_draft and save_quote_draft do not narrow their answer as intended.';
+                                                'private.operational_exceptions_all(uuid)'::regprocedure, 'public.issue_quote_version(uuid, integer)'::regprocedure,
+                                                'public.record_quote_delivery(uuid, uuid, public.delivery_status, text[], text[], text, text, text, text, text, jsonb)'::regprocedure,
+                                                'public.crm_opportunity_values(uuid[])'::regprocedure, 'private.crm_value_guard()'::regprocedure)
+        and prosrc like '%private.sales_money_ok()%' and prosecdef and coalesce(proconfig, '{}') @> array['search_path=""']) <> 7 then
+    raise exception 'A narrowed function (save drafts, Command Center, quote sending, opportunity values) is not as intended.';
   end if;
 end;
 $$;

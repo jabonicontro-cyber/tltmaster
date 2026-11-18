@@ -57,7 +57,10 @@ export async function POST(request: NextRequest) {
   const up = await createAdminClient().storage.from(BUCKET).upload(path, bytes, { contentType: check.type, upsert: false, cacheControl: "private, max-age=0" });
   if (up.error) {
     console.error("Ticket mistake photo upload failed", { report, error: up.error.message });
-    return reply(502, { error: "The photo could not be stored. The report was sent without it." });
+    // The reserved path is cleared again (only if it is still this one), so the report shows no broken photo link and
+    // the driver can try once more.
+    await createAdminClient().from("ticket_mistake_reports").update({ photo_path: null, photo_mime: null }).eq("id", report).eq("photo_path", path);
+    return reply(502, { error: "The photo could not be stored. The report was sent without it; you can try the photo again." });
   }
   return reply(200, { ok: true });
 }

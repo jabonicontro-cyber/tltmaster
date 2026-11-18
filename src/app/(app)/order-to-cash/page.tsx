@@ -54,7 +54,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
             >
               <span className="block text-xs font-medium text-muted">{say(STAGE_LABELS[s.stage])}</span>
               <span className="mt-0.5 block text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{s.total}</span>
-              <span className="block text-xs text-muted">{s.attention ? `${s.attention} need attention` : "Nothing waiting"} · {formatCents(s.cents)}</span>
+              <span className="block text-xs text-muted">{s.attention ? `${s.attention} need attention` : "Nothing waiting"} · {s.cents === null ? "value not available" : formatCents(s.cents)}</span>
             </Link>
           </li>
         ))}

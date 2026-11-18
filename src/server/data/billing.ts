@@ -26,7 +26,8 @@ export interface BillingOrderRow {
   service_start: string | null;
   service_end: string | null;
   completed_at: string | null;
-  total_cents: number;
+  /** null when it could not be read (or the person has no billing or pricing access: SEC7). */
+  total_cents: number | null;
   loads_total: number;
   loads_due: number;
   loads_missing: number;
@@ -330,13 +331,20 @@ export async function getOrderBilling(orderId: string) {
   const priceCheck = check?.price_check_requested_at
     ? { requestedAt: check.price_check_requested_at, requestedBy: check.price_check_requested_by, lines: typedPriceLines((typedRes?.data ?? []) as PriceCheckLine[]), correctable: correctableLines((typedRes?.data ?? []) as PriceCheckLine[]) }
     : null;
-  const draft = buildInvoiceDraft({
-    lines: ((orderLines.data ?? []) as Array<Omit<DraftOrderLine, "amount_cents"> & { id: string }>).map((l) => ({ ...l, amount_cents: lineAmounts?.get(l.id) ?? 0 })) as DraftOrderLine[],
-    tickets: (tickets.data ?? []) as DraftTicket[],
-    taxRateBp: (order.data as { tax_rate_bp: number } | null)?.tax_rate_bp ?? 0,
-    orderTotalCents: orderMoney?.get(orderId)?.total_cents ?? (status as BillingOrderRow).total_cents ?? 0,
-    readiness: (status as BillingOrderRow).readiness,
-  });
+  // The invoice draft only from amounts actually read (SEC7): when a line amount or the order total could not be read, no
+  // draft is shown, never one computed on zeros.
+  const draftLines = (orderLines.data ?? []) as Array<Omit<DraftOrderLine, "amount_cents"> & { id: string }>;
+  const orderTotal = orderMoney?.get(orderId)?.total_cents ?? (status as BillingOrderRow).total_cents ?? null;
+  const amountsRead = Boolean(lineAmounts) && orderTotal !== null && draftLines.every((l) => lineAmounts!.has(l.id));
+  const draft = amountsRead
+    ? buildInvoiceDraft({
+        lines: draftLines.map((l) => ({ ...l, amount_cents: lineAmounts!.get(l.id)! })) as DraftOrderLine[],
+        tickets: (tickets.data ?? []) as DraftTicket[],
+        taxRateBp: (order.data as { tax_rate_bp: number } | null)?.tax_rate_bp ?? 0,
+        orderTotalCents: orderTotal!,
+        readiness: (status as BillingOrderRow).readiness,
+      })
+    : null;
   return {
     draft,
     /** The order's edit counter, for completing it from the billing page (the database refuses a stale one). */

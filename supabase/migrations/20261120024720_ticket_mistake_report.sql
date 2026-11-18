@@ -17,6 +17,8 @@
 --     reserves the storage path (private field-report-photos bucket; the app stores the bytes with the service role).
 --     public.ticket_mistake_photo_path(report): the path for someone who may read the report.
 --   * public.ticket_mistake_resolve(report, note): tickets.review; audited.
+--   * Dispatch bases: as on delivery tickets, someone limited to some bases sees and handles only the reports on tickets in
+--     those bases (a restrictive policy, and private.ticket_mistake_base_ok in the functions).
 --   * private.ticket_mistake_corrected: a correction of the ticket (a new revision) marks its open reports handled.
 --   * driver_portal_home and private.driver_assignments also return each ticket's paper ticket number
 --     (external_reference), so the driver's load card shows it after sending, and whether a mistake is reported.
@@ -66,6 +68,28 @@ create policy ticket_mistake_reports_office on public.ticket_mistake_reports for
 drop policy if exists ticket_mistake_reports_driver on public.ticket_mistake_reports;
 create policy ticket_mistake_reports_driver on public.ticket_mistake_reports for select to authenticated
   using (company_id = (select private.current_company_id()) and driver_id = (select private.my_driver_id()));
+-- Dispatch bases, as on delivery tickets: someone limited to some bases reads only the reports on tickets they may read
+-- (the ticket's order in one of their bases); the reporting driver always reads their own.
+drop policy if exists ticket_mistake_reports_base_access on public.ticket_mistake_reports;
+create policy ticket_mistake_reports_base_access on public.ticket_mistake_reports as restrictive for select to authenticated
+  using ((select private.base_unrestricted())
+         or driver_id = (select private.my_driver_id())
+         or exists (select 1 from public.delivery_tickets t where t.id = ticket_mistake_reports.ticket_id));
+
+-- The same base rule inside the functions below (they read the table as its owner): the ticket's order has no base, or
+-- one of the person's bases, or the person is not limited to bases.
+create or replace function private.ticket_mistake_base_ok(p_ticket uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select private.base_unrestricted() or exists (
+    select 1 from public.delivery_tickets t join public.orders o on o.id = t.order_id and o.company_id = t.company_id
+     where t.id = p_ticket and (o.base_id is null or o.base_id = any (coalesce(private.my_bases(), '{}'))));
+$$;
+revoke all on function private.ticket_mistake_base_ok(uuid) from public, anon, authenticated;
 
 -- The company guard every business table has (a row never moves to another company).
 drop trigger if exists a_company_guard on public.ticket_mistake_reports;
@@ -151,6 +175,7 @@ begin
   if p_mime is null or p_mime not in ('image/jpeg', 'image/png', 'image/webp') or p_size is null or p_size < 1 or p_size > 5242880 then
     raise exception 'Photos must be JPEG, PNG or WebP and at most 5 MB.' using errcode = '22023';
   end if;
+  -- One photo. A failed upload clears the reserved path (the app, with the service role), so the driver can try again.
   if v_r.photo_path is not null then
     raise exception 'This report already has its photo.' using errcode = '22023';
   end if;
@@ -176,7 +201,8 @@ declare
 begin
   select r.photo_path into v_path from public.ticket_mistake_reports r
    where r.id = p_report and r.company_id = v_company
-     and (private.has_permission('tickets.view') or (v_driver is not null and r.driver_id = v_driver));
+     and ((private.has_permission('tickets.view') and private.ticket_mistake_base_ok(r.ticket_id))
+          or (v_driver is not null and r.driver_id = v_driver));
   return v_path;
 end;
 $$;
@@ -198,7 +224,7 @@ declare
 begin
   perform private.require_permission('tickets.review');
   select * into v_r from public.ticket_mistake_reports where id = p_report and company_id = v_company for update;
-  if not found then
+  if not found or not private.ticket_mistake_base_ok(v_r.ticket_id) then
     raise exception 'Report not found.' using errcode = 'P0002';
   end if;
   if v_r.status = 'resolved' then
@@ -321,7 +347,7 @@ begin
     where (n.nspname, p.proname) in (('public', 'ticket_mistake_report'), ('public', 'ticket_mistake_photo_begin'),
                                      ('public', 'ticket_mistake_photo_path'), ('public', 'ticket_mistake_resolve'),
                                      ('private', 'ticket_mistake_corrected'), ('public', 'driver_portal_home'), ('private', 'driver_assignments'),
-                                     ('public', 'demo_ticket_mistake_sample'))
+                                     ('public', 'demo_ticket_mistake_sample'), ('private', 'ticket_mistake_base_ok'))
       and not (p.prosecdef and coalesce(p.proconfig, '{}') @> array['search_path=""']))
   then
     raise exception 'A new or changed function is not a pinned security definer function.';

@@ -648,7 +648,8 @@ readable **column by column**: every column except the totals (`subtotal_cents`,
 access. Order and quote history entries that carry a total are read through `sales_history(type, id)`. Never
 `select("*")` on these four tables; use `ORDER_COLUMNS` and the like (`src/server/data/sales-money.ts`). **A column added to
 them later needs its own `grant select (column) ... to authenticated`** (`tests/db/order-totals-money.test.ts` lists the
-closed columns).
+closed columns). `crm_opportunities.value_cents` follows the same rule (owner 2026-11-18): read through
+`crm_opportunity_values(ids)`, set only with money access (`private.crm_value_guard`).
 
 **Invoicing choice (20261120024710, INV1):** `invoicing_settings.issuer_chosen_at` / `issuer_chosen_by`: when and by whom
 the company answered "Who sends your invoices?"; empty (or no row) = never chosen. Written by `invoicing_choose_issuer`

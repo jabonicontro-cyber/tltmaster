@@ -111,3 +111,31 @@ describe("Mistake on my ticket (TM1)", () => {
     expect(mistakeSentMessage("TKT-1", "failed")).toMatch(/show the paper ticket/);
   });
 });
+
+describe("missing amounts stay missing (review 2026-11-18)", () => {
+  it("customer balance: an order whose value could not be read is counted apart, not as zero", async () => {
+    const { customerBalance } = await import("@/lib/billing/balance");
+    const s = customerBalance({ today: "2026-11-18", invoices: [], handoffs: [], delivered: [{ value_cents: null, tickets_pending: 0 }, { value_cents: 1000, tickets_pending: 0 }], ticketsOpenCents: null, creditCents: 0 });
+    expect(s).toMatchObject({ deliveredCents: 1000, deliveredOrders: 2, deliveredUnknown: 1, empty: false });
+  });
+  it("Order to Cash: a stage's value is not available when any order's total could not be read", async () => {
+    const { summarize } = await import("@/lib/order-to-cash");
+    const base = { order_number: "O", status: "completed", customer_name: null, project_name: null, scheduled_start: "2026-11-01", order_date: "2026-11-01", completed_at: null, loads_total: 1, loads_missing: 0, loads_not_due: 0, tickets_live: 1, tickets_pending: 0, exceptions_count: 0, readiness: "ready" as const, fulfilled: true, fulfillment_gap: null, handed_off_at: null, changed_since_handoff: false, batch_number: null };
+    const ready = (rows: Array<{ id: string; total: number | null }>) => summarize(rows.map((r) => ({ ...base, order_id: r.id, total_cents: r.total }))).find((x) => x.stage === "ready")!;
+    expect(ready([{ id: "a", total: 100 }, { id: "b", total: 50 }]).cents).toBe(150);
+    expect(ready([{ id: "a", total: 100 }, { id: "b", total: null }]).cents).toBeNull();
+  });
+  it("quote outcomes: won and lost values are not available rather than summed as zero", async () => {
+    const { quoteOutcomes } = await import("@/lib/quotes/outcomes");
+    const q = (outcome: "won" | "lost", totalCents: number | null) => ({ id: `${outcome}${totalCents}`, number: "Q", outcome, status: outcome === "won" ? "accepted" : "declined", customer: "C", decidedOn: "2026-11-01", firstSentOn: null, miles: null, reason: "", totalCents, materials: [] });
+    expect(quoteOutcomes([q("won", 100), q("lost", 50)])).toMatchObject({ wonValueCents: 100, lostValueCents: 50 });
+    expect(quoteOutcomes([q("won", null), q("lost", 50)])).toMatchObject({ wonValueCents: null, lostValueCents: 50 });
+  });
+  it("ordering less: without order values the signal counts orders and shows no dollar figure", async () => {
+    const { orderingLess } = await import("@/lib/insights/customers");
+    const pts = ["2026-07-25", "2026-07-26", "2026-08-10", "2026-08-11", "2026-09-10", "2026-09-11", "2026-09-12"].map((d) => ({ customerId: "A", customerName: "A", orderDate: d, totalCents: null }));
+    const s = orderingLess(pts, "2026-11-18");
+    expect(s).toHaveLength(1);
+    expect(s[0].weightCents).toBeNull();
+  });
+});

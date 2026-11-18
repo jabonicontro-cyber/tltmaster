@@ -92,7 +92,7 @@ export function HistoryCard({ history, timezone }: { history: CustomerHistory; t
   );
 }
 
-function OpportunityForm({ customerId, o, names }: { customerId: string; o?: Opportunity; names: Names }) {
+function OpportunityForm({ customerId, o, names, showValues = true }: { customerId: string; o?: Opportunity; names: Names; showValues?: boolean }) {
   const k = o?.id ?? "new";
   return (
     <form action={saveOpportunity} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -102,7 +102,7 @@ function OpportunityForm({ customerId, o, names }: { customerId: string; o?: Opp
       <Field label="Stage" htmlFor={`stage-${k}`}>
         <Select id={`stage-${k}`} name="stage" defaultValue={o?.stage ?? "new"}>{STAGES.map((s) => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}</Select>
       </Field>
-      <Field label="Value ($)" htmlFor={`value-${k}`} hint="Your estimate; leave empty if unknown."><Input id={`value-${k}`} name="value" inputMode="decimal" defaultValue={o?.value_cents != null ? String(o.value_cents / 100) : ""} /></Field>
+      {showValues && <Field label="Value ($)" htmlFor={`value-${k}`} hint="Your estimate; leave empty if unknown."><Input id={`value-${k}`} name="value" inputMode="decimal" defaultValue={o?.value_cents != null ? String(o.value_cents / 100) : ""} /></Field>}
       <Field label="Probability (%)" htmlFor={`prob-${k}`}><Input id={`prob-${k}`} name="probability" inputMode="numeric" defaultValue={o?.probability ?? ""} /></Field>
       <Field label="Owner" htmlFor={`owner-${k}`}><PeopleSelect id={`owner-${k}`} name="owner_id" names={names} value={o?.owner_id} empty="Nobody" /></Field>
       <Field label="Follow up on" htmlFor={`follow-${k}`}><DateInput id={`follow-${k}`} name="follow_up_on" defaultValue={o?.follow_up_on ?? ""} /></Field>
@@ -114,7 +114,8 @@ function OpportunityForm({ customerId, o, names }: { customerId: string; o?: Opp
   );
 }
 
-export function OpportunitiesCard({ customerId, opportunities, names, canEdit, today }: { customerId: string; opportunities: Opportunity[]; names: Names; canEdit: boolean; today: string }) {
+/** showValues: opportunity values only for billing or pricing access (owner 2026-11-18). */
+export function OpportunitiesCard({ customerId, opportunities, names, canEdit, today, showValues = true }: { customerId: string; opportunities: Opportunity[]; names: Names; canEdit: boolean; today: string; showValues?: boolean }) {
   return (
     <Card>
       <span id="opportunities" className="block scroll-mt-20" />
@@ -127,7 +128,7 @@ export function OpportunitiesCard({ customerId, opportunities, names, canEdit, t
             const late = o.follow_up_on && o.follow_up_on < today && OPEN_STAGES.includes(o.stage);
             return (
               <li key={o.id} className="space-y-1 px-5 py-3 text-sm sm:px-6">
-                <p className="flex flex-wrap items-center gap-2"><span className="font-semibold">{o.title}</span><Badge tone={stageTone(o.stage)}>{STAGE_LABELS[o.stage]}</Badge><span className="ml-auto tabular">{money(o.value_cents)}{o.probability !== null ? ` · ${o.probability}%` : ""}</span></p>
+                <p className="flex flex-wrap items-center gap-2"><span className="font-semibold">{o.title}</span><Badge tone={stageTone(o.stage)}>{STAGE_LABELS[o.stage]}</Badge><span className="ml-auto tabular">{[showValues ? money(o.value_cents) : "", o.probability !== null ? `${o.probability}%` : ""].filter(Boolean).join(" · ")}</span></p>
                 <p className="text-muted">
                   {o.owner_id ? `${names[o.owner_id] ?? "Former user"} · ` : ""}
                   {o.follow_up_on ? <span className={late ? "font-semibold text-critical" : ""}>Follow up {formatDate(o.follow_up_on)}{late ? " (overdue)" : ""}</span> : "No follow-up date"}
@@ -137,7 +138,7 @@ export function OpportunitiesCard({ customerId, opportunities, names, canEdit, t
                 {canEdit && (
                   <details>
                     <summary className="cursor-pointer text-xs font-semibold text-brand-fg">Update</summary>
-                    <div className="mt-2"><OpportunityForm customerId={customerId} o={o} names={names} /></div>
+                    <div className="mt-2"><OpportunityForm customerId={customerId} o={o} names={names} showValues={showValues} /></div>
                   </details>
                 )}
               </li>
@@ -149,7 +150,7 @@ export function OpportunitiesCard({ customerId, opportunities, names, canEdit, t
         <CardBody className="border-t border-line">
           <details>
             <summary className="cursor-pointer text-sm font-semibold text-brand-fg">New opportunity</summary>
-            <div className="mt-3"><OpportunityForm customerId={customerId} names={names} /></div>
+            <div className="mt-3"><OpportunityForm customerId={customerId} names={names} showValues={showValues} /></div>
           </details>
         </CardBody>
       )}

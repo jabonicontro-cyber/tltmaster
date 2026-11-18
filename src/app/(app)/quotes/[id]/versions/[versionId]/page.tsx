@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { requirePagePermission } from "@/server/auth";
 import { canSeeSalesTotals } from "@/lib/permissions";
+import { QuoteTotalsUnavailableError } from "@/lib/quotes/document";
 import { loadQuoteDocument } from "@/server/quotes/document-loader";
 
 export const metadata = { title: "Quote preview" };
@@ -25,7 +26,18 @@ export default async function QuoteVersionPage({ params }: { params: Promise<{ i
       </>
     );
   }
-  const loaded = await loadQuoteDocument(id, versionId);
+  let loaded: Awaited<ReturnType<typeof loadQuoteDocument>>;
+  try {
+    loaded = await loadQuoteDocument(id, versionId);
+  } catch (e) {
+    if (!(e instanceof QuoteTotalsUnavailableError)) throw e;
+    return (
+      <>
+        <PageHeader title="Quote document" crumbs={[{ label: "Quotes", href: "/quotes" }, { label: "Quote", href: `/quotes/${id}` }, { label: "Document" }]} />
+        <Notice tone="warning" title="The quote's totals couldn't be read">No document is shown rather than one with wrong figures. Try again in a moment, or ask the office.</Notice>
+      </>
+    );
+  }
   if (!loaded) notFound();
   const { quote, version, doc } = loaded;
   const isCurrent = quote.current_version_id === version.id;

@@ -50,7 +50,7 @@ export default async function CustomerInsightsPage() {
   // Order totals only for billing or pricing access (SEC7): without them "ordering less" counts orders and shows no
   // dollar figure.
   const totals = canSeeSalesTotals(access) && orderRows.length ? await orderTotals(orderRows.map((o) => o.id)) : null;
-  const points: OrderPoint[] = orderRows.map((o) => ({ customerId: o.customer_id, customerName: o.customers?.name ?? "Customer", orderDate: o.order_date, totalCents: totals?.get(o.id)?.total_cents ?? 0 }));
+  const points: OrderPoint[] = orderRows.map((o) => ({ customerId: o.customer_id, customerName: o.customers?.name ?? "Customer", orderDate: o.order_date, totalCents: totals?.get(o.id)?.total_cents ?? null }));
   const issued = (invoices ?? []).filter((i) => i.status === "issued" && i.issue_date);
   const paid: PaidInvoice[] = issued
     .filter((i) => i.total_cents > 0 && paidCents(i) >= i.total_cents)
@@ -133,7 +133,7 @@ export default async function CustomerInsightsPage() {
                   <li key={c.customerId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 sm:px-6">
                     <Link href={`/customers/${c.customerId}`} className="font-semibold hover:underline">{c.customerName}</Link>
                     <span className="min-w-0 flex-1 text-sm text-muted">{c.detail}</span>
-                    {c.weightCents > 0 && <Badge tone="amber">≈ {formatCents(c.weightCents)} below usual</Badge>}
+                    {c.weightCents !== null && c.weightCents > 0 && <Badge tone="amber">≈ {formatCents(c.weightCents)} below usual</Badge>}
                   </li>
                 ))}
               </ul>
@@ -149,7 +149,7 @@ export default async function CustomerInsightsPage() {
                   <li key={c.customerId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 sm:px-6">
                     <Link href={`/customers/${c.customerId}`} className="font-semibold hover:underline">{c.customerName || "Customer"}</Link>
                     <span className="min-w-0 flex-1 text-sm text-muted">{c.detail}</span>
-                    {c.weightCents > 0 && <Badge tone="amber">{formatCents(c.weightCents)} open</Badge>}
+                    {c.weightCents !== null && c.weightCents > 0 && <Badge tone="amber">{formatCents(c.weightCents)} open</Badge>}
                   </li>
                 ))}
               </ul>

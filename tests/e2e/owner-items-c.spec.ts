@@ -55,6 +55,21 @@ test("SEC7: a dispatcher sees the rates on an order but no totals; the office se
   await expect(page.locator("main")).toContainText(money);
 });
 
+test("owner 2026-11-18: a dispatcher sees the pipeline's opportunities and follow-ups, not their values", async ({ page }) => {
+  const [c] = await sql<{ id: string }>("select id from public.customers where company_id = $1 and active order by name limit 1", [TOP_LINE]);
+  const title = `Value check e2e ${randomUUID().slice(0, 6)}`;
+  await asUser(USERS.office.email, (q) => q("insert into public.crm_opportunities (customer_id, title, stage, value_cents) values ($1, $2, 'quoting', 4321000)", [c.id, title]));
+  await signIn(page, "dispatcher");
+  await page.goto("/customers/pipeline");
+  await expect(page.getByRole("link", { name: title })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("43,210");
+  await expect(page.getByText(/open value/)).toHaveCount(0);
+  await page.context().clearCookies();
+  await signIn(page, "office");
+  await page.goto("/customers/pipeline");
+  await expect(page.locator("main")).toContainText("43,210");
+});
+
 test("INV1: until the company answers, Getting started and Billing ask who sends the invoices", async ({ page }) => {
   const [before] = await sql<{ issuer: string; chosen: string | null }>("select issuer, issuer_chosen_at::text chosen from public.invoicing_settings where company_id = $1", [TOP_LINE]);
   await sql("update public.invoicing_settings set issuer_chosen_at = null where company_id = $1", [TOP_LINE]);

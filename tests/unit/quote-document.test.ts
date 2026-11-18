@@ -66,3 +66,12 @@ describe("buildQuoteDocument", () => {
     expect(doc.footerNote).toBe("");
   });
 });
+
+describe("no document without its totals (SEC7)", () => {
+  it("refuses to build a quote document when a total or a line amount could not be read (never $0.00)", async () => {
+    const { QuoteTotalsUnavailableError } = await import("@/lib/quotes/document");
+    expect(() => buildQuoteDocument({ quote: { quote_number: "QTE-1" }, version: version({ total_cents: null }), lines, customer, settings })).toThrow(QuoteTotalsUnavailableError);
+    expect(() => buildQuoteDocument({ quote: { quote_number: "QTE-1" }, version: version(), lines: lines.map((l, i) => (i === 0 ? { ...l, amount_cents: null } : l)), customer, settings })).toThrow(/Quote totals couldn't be read; nothing was sent/);
+    expect(() => buildQuoteDocument({ quote: { quote_number: "QTE-1" }, version: version(), lines, customer, settings })).not.toThrow();
+  });
+});

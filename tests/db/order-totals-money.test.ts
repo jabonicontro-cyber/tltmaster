@@ -119,6 +119,39 @@ describe("order and quote totals (SEC7)", () => {
     });
   });
 
+  it("opportunity values for money access only; sending a priced quote needs it too (owner 2026-11-18)", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const office = await s.createUser("office");
+      const dispatcher = await s.createUser("dispatcher");
+      await s.as(office);
+      const opp = (await s.query<{ id: string }>("insert into public.crm_opportunities (customer_id, title, stage, value_cents) values ($1, 'Next phase (test)', 'quoting', 1250000) returning id", [ids.customerId])).rows[0].id;
+      expect((await s.query("select value_cents::int as v from public.crm_opportunity_values(array[$1::uuid])", [opp])).rows).toEqual([{ v: 1250000 }]);
+      expect((await pgError(s.query("select value_cents from public.crm_opportunities where id = $1", [opp]))).code).toBe("42501");
+      // A dispatcher reads the opportunity, its stage and follow-up, never its value.
+      await s.as(dispatcher);
+      expect((await s.query("select title, stage from public.crm_opportunities where id = $1", [opp])).rows).toEqual([{ title: "Next phase (test)", stage: "quoting" }]);
+      expect((await pgError(s.query("select value_cents from public.crm_opportunities where id = $1", [opp]))).code).toBe("42501");
+      expect((await pgError(s.query("select * from public.crm_opportunities where id = $1", [opp]))).code).toBe("42501");
+      expect((await pgError(s.query("select * from public.crm_opportunity_values(array[$1::uuid])", [opp]))).code).toBe("42501");
+      // Someone who may edit customers but has no money access cannot set or change a value; other fields save.
+      await s.asAdmin();
+      await s.query("delete from public.role_permissions where company_id = $1 and role = 'office' and permission in ('billing.view', 'billing.manage', 'pricing.edit', 'pricing.override')", [TOP_LINE]);
+      await s.as(office);
+      expect((await pgError(s.query("update public.crm_opportunities set value_cents = 1 where id = $1", [opp]))).code).toBe("42501");
+      await s.query("update public.crm_opportunities set next_action = 'Call back (test)' where id = $1", [opp]);
+      expect((await pgError(s.query("insert into public.crm_opportunities (customer_id, title, value_cents) values ($1, 'X (test)', 5)", [ids.customerId]))).code).toBe("42501");
+      // Sending a quote with its prices: the office without money access is refused (quotes.send alone is not enough).
+      const today = await businessToday(s);
+      await s.asAdmin();
+      const q = await (async () => { await s.as(await s.createUser("owner")); return saveQuote(s, { customer_id: ids.customerId, quote_date: today, valid_until: addDays(today, 30), lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.gravelId, description: "Gravel #53", unit_code: "ton", quantity: "5", unit_rate_cents: 1000 }] }); })();
+      await s.as(office);
+      const refused = await pgError(s.query("select public.issue_quote_version($1, $2)", [q.quote_id, q.edit_seq]));
+      expect(refused).toEqual({ code: "42501", message: "Quotes with prices are sent by the office." });
+      expect((await pgError(s.query("select public.record_quote_delivery($1, $2, 'failed', '{}', '{}', 's', 'b', 'preview', null, 'x', null)", [q.quote_id, q.version_id]))).code).toBe("42501");
+    });
+  });
+
   it("every order and quote column but the totals is readable (a column added later needs its own grant)", async () => {
     await withSession(async (s) => {
       await s.asAdmin();
@@ -128,6 +161,7 @@ describe("order and quote totals (SEC7)", () => {
       expect(await closed("order_lines")).toEqual(["amount_cents"]);
       expect(await closed("quote_versions")).toEqual(["discount_cents", "subtotal_cents", "tax_cents", "taxable_cents", "total_cents"]);
       expect(await closed("quote_lines")).toEqual(["amount_cents"]);
+      expect(await closed("crm_opportunities")).toEqual(["value_cents"]);
     });
   });
 });

@@ -23,7 +23,7 @@ export async function orderToCashRows(): Promise<OrderRow[]> {
   if (unscheduled.error) throw new Error(`Order-to-cash could not be read: ${unscheduled.error.message}`);
   const rows = ((billing.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
     ...(r as unknown as OrderRow),
-    total_cents: n(r.total_cents), loads_total: n(r.loads_total), loads_missing: n(r.loads_missing), loads_not_due: n(r.loads_not_due),
+    total_cents: r.total_cents === null || r.total_cents === undefined ? null : n(r.total_cents), loads_total: n(r.loads_total), loads_missing: n(r.loads_missing), loads_not_due: n(r.loads_not_due),
     tickets_live: n(r.tickets_live), tickets_pending: n(r.tickets_pending), exceptions_count: n(r.exceptions_count),
     changed_since_handoff: Boolean(r.changed_since_handoff), fulfilled: Boolean(r.fulfilled),
   }));
@@ -32,7 +32,7 @@ export async function orderToCashRows(): Promise<OrderRow[]> {
   const totals = await orderTotals(waitingRows.map((o) => o.id));
   const waiting = waitingRows.map<OrderRow>((o) => ({
     order_id: o.id, order_number: o.order_number, status: o.status, customer_name: o.customers?.name ?? null, project_name: o.project_name,
-    scheduled_start: null, order_date: o.order_date, completed_at: null, total_cents: totals?.get(o.id)?.total_cents ?? 0, loads_total: 0, loads_missing: 0, loads_not_due: 0,
+    scheduled_start: null, order_date: o.order_date, completed_at: null, total_cents: totals?.get(o.id)?.total_cents ?? null, loads_total: 0, loads_missing: 0, loads_not_due: 0,
     tickets_live: 0, tickets_pending: 0, exceptions_count: 0, readiness: "in_progress", fulfilled: false, fulfillment_gap: "no_loads",
     handed_off_at: null, changed_since_handoff: false, batch_number: null,
   }));

@@ -40,7 +40,11 @@ export async function loadQuoteDashboard(filters: DashboardFilters, today: strin
   if (openRes.error || decidedRes.error || acceptedRes.error) {
     throw new Error(`Could not load dashboard: ${(openRes.error ?? decidedRes.error ?? acceptedRes.error)?.message}`);
   }
-  const openRows = (openRes.data ?? []) as QuoteListRow[];
+  // Quote totals only for billing or pricing access (SEC7): the database leaves them empty for others; a demo role preview
+  // without that access gets them taken out here, before any list reaches the page.
+  const showTotals = await seesSalesTotals();
+  const hide = <T extends { total_cents: number | null }>(rows: T[]): T[] => (showTotals ? rows : rows.map((r) => ({ ...r, total_cents: null })));
+  const openRows = hide((openRes.data ?? []) as QuoteListRow[]);
   const now = new Date();
   const drafts = openRows.filter((q) => q.status === "draft");
   const sent = openRows.filter((q) => q.status === "sent");
@@ -51,7 +55,6 @@ export async function loadQuoteDashboard(filters: DashboardFilters, today: strin
   // PostgREST returns the to-one embed as an object; untyped clients see an array type.
   const decidedRows = (decidedRes.data ?? []) as unknown as Array<{ status: string; current_version_id: string }>;
   // Quote totals only for billing or pricing access (SEC7, 20261120024700); showTotals tells the page.
-  const showTotals = await seesSalesTotals();
   const decidedTotals = showTotals ? await quoteTotals(decidedRows.map((r) => r.current_version_id)) : null;
   const totalOf = (r: (typeof decidedRows)[number]) => decidedTotals?.get(r.current_version_id)?.total_cents ?? 0;
   const accepted = decidedRows.filter((r) => r.status === "accepted");
@@ -72,7 +75,7 @@ export async function loadQuoteDashboard(filters: DashboardFilters, today: strin
     declinedCount: declined.length,
     // Only meaningful once there are decisions in the period.
     winRate: decidedCount > 0 ? Math.round((accepted.length / decidedCount) * 100) : null,
-    recentAccepted: (acceptedRes.data ?? []) as QuoteListRow[],
+    recentAccepted: hide((acceptedRes.data ?? []) as QuoteListRow[]),
     staleDrafts: drafts.filter((q) => q.updated_at < addDays(today, -7)),
   };
 }

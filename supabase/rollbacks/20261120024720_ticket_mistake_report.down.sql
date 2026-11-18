@@ -21,9 +21,11 @@ begin
        $new$'review_reasons', to_jsonb(t.review_reasons)) order by t.created_at desc)$new$)) as t(fn, old_text, new_text)
   loop
     v_def := pg_get_functiondef(r.fn);
-    if position(r.old_text in v_def) > 0 then
-      execute replace(v_def, r.old_text, r.new_text);
+    -- Exactly once, or the rollback stops here, before anything is dropped.
+    if (length(v_def) - length(replace(v_def, r.old_text, ''))) / length(r.old_text) <> 1 then
+      raise exception 'The text of % is not as expected; nothing was rolled back.', r.fn;
     end if;
+    execute replace(v_def, r.old_text, r.new_text);
   end loop;
 end;
 $$;
@@ -36,6 +38,7 @@ drop function if exists public.ticket_mistake_photo_path(uuid);
 drop function if exists public.ticket_mistake_resolve(uuid, text);
 drop function if exists public.demo_ticket_mistake_sample();
 drop table if exists public.ticket_mistake_reports;
+drop function if exists private.ticket_mistake_base_ok(uuid);
 
 notify pgrst, 'reload schema';
 

@@ -159,6 +159,29 @@ describe("Mistake on my ticket (TM1)", () => {
     });
   });
 
+  it("someone limited to another dispatch base neither reads nor handles the report (as with the ticket itself)", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      await s.as(w.driver1);
+      const r = (await report(s, { ticket_id: w.t1.ticket_id, field: "quantity", correct_value: "22", note: "", submission_key: randomUUID() })).rows[0].r;
+      await s.asAdmin();
+      const other = (await s.query<{ id: string }>("insert into public.dispatch_bases (company_id, code, name, timezone, active) values ($1, $2, 'Far yard (test)', 'America/Chicago', false) returning id", [TOP_LINE, `F${randomUUID().slice(0, 6).toUpperCase()}`])).rows[0].id;
+      const main = (await s.query<{ id: string }>("select id from public.dispatch_bases where company_id = $1 and is_default", [TOP_LINE])).rows[0].id;
+      await s.query("update public.orders set base_id = $2 where id = $1", [w.order.id, main]);
+      const farOffice = await s.createUser("office");
+      await s.asAdmin();
+      await s.query("insert into public.base_members (company_id, user_id, base_id) values ($1, $2, $3)", [TOP_LINE, farOffice, other]);
+      await s.as(farOffice);
+      expect((await s.query("select 1 from public.ticket_mistake_reports where id = $1", [r.report_id])).rowCount).toBe(0);
+      expect((await pgError(s.query("select public.ticket_mistake_resolve($1, 'ok')", [r.report_id]))).code).toBe("P0002");
+      // The office of the order's own base reads it; the reporting driver always reads their own.
+      await s.as(w.office);
+      expect((await s.query("select 1 from public.ticket_mistake_reports where id = $1", [r.report_id])).rowCount).toBe(1);
+      await s.as(w.driver1);
+      expect((await s.query("select 1 from public.ticket_mistake_reports where id = $1", [r.report_id])).rowCount).toBe(1);
+    });
+  });
+
   it("the office marks a report handled with a note (tickets.review); other companies never see it", async () => {
     await withSession(async (s) => {
       const w = await world(s);

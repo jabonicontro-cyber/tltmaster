@@ -40,10 +40,10 @@ export async function loadDecidedQuotes(from: string, to: string, timeZone: stri
     getSettings(),
   ]);
   for (const r of [versions, lines, customers]) if (r.error) throw new Error(`Could not load quotes: ${r.error.message}`);
-  // Quote totals through quote_totals (SEC7, 20261120024700): billing or pricing access; 0 for everyone else, whose pages
-  // leave the values out.
+  // Quote totals through quote_totals (SEC7, 20261120024700): billing or pricing access; null for everyone else and when
+  // they could not be read (never zero).
   const totals = await quoteTotals(versionIds);
-  const versionRows = ((versions.data ?? []) as Array<{ id: string; site_id: string | null }>).map((v) => ({ ...v, total_cents: totals?.get(v.id)?.total_cents ?? 0 }));
+  const versionRows = ((versions.data ?? []) as Array<{ id: string; site_id: string | null }>).map((v) => ({ ...v, total_cents: totals?.get(v.id)?.total_cents ?? null }));
   const siteIds = [...new Set(versionRows.map((v) => v.site_id).filter((s): s is string => Boolean(s)))];
   const sites = siteIds.length ? await supabase.from("customer_sites").select("id, latitude, longitude").in("id", siteIds) : { data: [] };
   const sitePoint = new Map(((sites.data ?? []) as Array<{ id: string; latitude: number | string | null; longitude: number | string | null }>).filter((s) => s.latitude != null && s.longitude != null).map((s) => [s.id, { lat: Number(s.latitude), lng: Number(s.longitude) }]));
@@ -75,7 +75,7 @@ export async function loadDecidedQuotes(from: string, to: string, timeZone: stri
         firstSentOn: q.first_sent_at ? todayIn(timeZone, new Date(q.first_sent_at)) : null,
         miles: yard && site ? straightLineMiles(yard, site) : null,
         reason: q.status === "accepted" ? "" : q.status_note ?? "",
-        totalCents: Number(v?.total_cents ?? 0),
+        totalCents: v?.total_cents === null || v?.total_cents === undefined ? null : Number(v.total_cents),
         materials: linesByVersion.get(vid) ?? [],
       } satisfies DecidedQuote;
     });

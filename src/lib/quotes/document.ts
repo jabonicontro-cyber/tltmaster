@@ -34,6 +34,15 @@ function addressLines(line1: string, line2: string, city: string, state: string,
   return [line1, line2, cityLine].filter((l) => l && l.trim() !== "");
 }
 
+/** The quote's totals or a line amount could not be read (SEC7): no document is made, never one with $0.00 in it. */
+export class QuoteTotalsUnavailableError extends Error {
+  constructor() {
+    super("Quote totals couldn't be read; nothing was sent. Try again, or ask the office.");
+    this.name = "QuoteTotalsUnavailableError";
+  }
+}
+export const QUOTES_SENT_BY_OFFICE = "Quotes with prices are sent by the office.";
+
 export function buildQuoteDocument(args: {
   quote: Pick<QuoteRow, "quote_number">;
   version: QuoteVersionRow;
@@ -42,6 +51,11 @@ export function buildQuoteDocument(args: {
   settings: CompanySettings;
 }): QuoteDocument {
   const { quote, version, lines, customer, settings } = args;
+  // The customer's document carries the prices: every total and line amount must have been read.
+  if ([version.subtotal_cents, version.discount_cents, version.tax_cents, version.total_cents].some((v) => v === null || v === undefined)
+      || lines.some((l) => l.amount_cents === null || l.amount_cents === undefined)) {
+    throw new QuoteTotalsUnavailableError();
+  }
   const isDraft = version.locked_at === null;
   const company = version.company_snapshot ?? {
     company_name: settings.company_name,

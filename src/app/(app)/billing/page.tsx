@@ -416,7 +416,7 @@ async function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoi
                       {qb.shown && <QuickBooksStatus sends={qb.sends[r.id] ?? []} entityNames={qb.entityNames} />}
                     </Td>
                     <Td className="hidden sm:table-cell tabular">{serviceDates(r.order.service_start, r.order.service_end)}</Td>
-                    <Td align="right" className="tabular">{formatCents(r.order.total_cents)}</Td>
+                    <Td align="right" className="tabular">{r.order.total_cents === null ? <span className="text-muted">Not available</span> : formatCents(r.order.total_cents)}</Td>
                     <Td align="right">
                       {qb.canSend && unsent([r]).length > 0 && <QuickBooksSendButton handoffOrderIds={[r.id]} label={(qb.sends[r.id] ?? []).some((s) => s.status === "failed") ? "Send again" : "Send to QuickBooks"} variant="ghost" />}
                       {issuer === "taviron" && !r.reverted_at && (invoices[r.id] ? (

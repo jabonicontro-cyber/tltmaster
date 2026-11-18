@@ -352,6 +352,10 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // company and ticket number.
   "public.ticket_mistake_report", "public.ticket_mistake_photo_begin", "public.ticket_mistake_photo_path",
   "public.ticket_mistake_resolve", "private.ticket_mistake_corrected", "public.demo_ticket_mistake_sample",
+  "private.ticket_mistake_base_ok",
+  // Opportunity values (owner 2026-11-18, 20261120024700): crm_opportunity_values needs customers.view and money access,
+  // require_company(); crm_value_guard refuses a value change without money access.
+  "public.crm_opportunity_values", "private.crm_value_guard",
   // BL1 (20261120024730): quote_accept needs quotes.status, the quote in require_company(), fills only an empty PO on
   // that quote's current revision, then set_quote_status.
   "public.quote_accept",
